@@ -1,58 +1,195 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>StudyScribe</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}" />
-    <script defer src="{{ url_for('static', filename='js/app.js') }}"></script>
-  </head>
-  <body>
-    <div class="app-shell">
-      <aside class="sidebar">
-        <div class="brand">
-          <div class="brand-title">StudyScribe</div>
-          <div class="brand-subtitle">Offline-first workspace</div>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>StudyScribe</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}" />
+  <script src="{{ url_for('static', filename='vendor/htmx.min.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='vendor/alpine.min.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+  <style>[x-cloak] { display: none !important; }</style>
+</head>
+<body>
+  <div class="container">
+    <div class="shell">
+      <aside class="panel">
+        <div class="panelHeader">
+          <div>
+            <div style="font-weight:700;">StudyScribe</div>
+            <div class="muted" style="font-size:12px;">Local-first learning capture</div>
+          </div>
         </div>
-        <nav class="nav">
-          <a class="nav-link" href="{{ url_for('home') }}">Home</a>
-          <div class="nav-section-title">Modules</div>
-          {% if modules %}
-            <div class="nav-list">
-              {% for module in modules %}
-                <a class="nav-link" href="{{ url_for('view_module', module_id=module.id) }}">
-                  {{ module.name }}
+        <div class="panelBody section">
+          <form class="stack8" method="post" action="{{ url_for('create_module') }}">
+            <input class="input" type="text" name="name" placeholder="New module name" required />
+            <button class="btn btnPrimary" type="submit">+ New Module</button>
+          </form>
+          <input class="input" placeholder="Search modules…" data-search-input data-search-target="module-list" />
+          <div class="stack8">
+            <div class="muted" style="font-size:12px;">Modules</div>
+            <div class="stack8" id="module-list" data-search-list>
+              {% for item in modules %}
+                <a
+                  class="row rowInteractive{% if module and item.id == module.id %} rowActive{% endif %}"
+                  href="{{ url_for('view_module', module_id=item.id) }}"
+                  data-search-item
+                  data-search-text="{{ item.name|lower }}"
+                  data-entity-row
+                  data-entity-type="module"
+                  data-entity-id="{{ item.id }}"
+                >
+                  <div class="rowContent">
+                    <div style="font-weight:650;" data-entity-name="module:{{ item.id }}">{{ item.name }}</div>
+                    <div class="muted" style="font-size:12px;">Created {{ item.created_at|format_dt }}</div>
+                  </div>
+                  <div class="rowActions">
+                    <button class="iconBtn" type="button" data-entity-action="rename" aria-label="Rename module">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16.75V20h3.25L18.81 8.44l-3.25-3.25L4 16.75zm15.71-9.04c.39-.39.39-1.02 0-1.41l-2.01-2.01a.996.996 0 1 0-1.41 1.41l2.01 2.01c.39.39 1.02.39 1.41 0z"/></svg>
+                    </button>
+                    <button class="iconBtn danger" type="button" data-entity-action="delete" aria-label="Delete module">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z"/></svg>
+                    </button>
+                  </div>
                 </a>
+              {% else %}
+                <div class="row rowStatic" data-search-empty>
+                  <div style="font-weight:650;">No modules yet</div>
+                  <div class="muted" style="font-size:12px;">Create one to start.</div>
+                </div>
               {% endfor %}
+              {% if modules %}
+                <div class="row rowStatic is-hidden" data-search-empty>
+                  <div style="font-weight:650;">No matching modules</div>
+                  <div class="muted" style="font-size:12px;">Try a different search term.</div>
+                </div>
+              {% endif %}
             </div>
-          {% else %}
-            <div class="nav-empty">No modules yet.</div>
-          {% endif %}
-        </nav>
-      </aside>
-      <main class="workspace">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            <div class="flash-stack">
-              {% for category, message in messages %}
-                <div class="flash flash-{{ category }}">{{ message }}</div>
-              {% endfor %}
+          </div>
+          <div class="stack8">
+            <div class="muted" style="font-size:12px;">System</div>
+            <div class="row rowStatic">
+              <div style="font-weight:650;">Gemini</div>
+              <div class="muted" style="font-size:12px;">{{ 'Ready' if config.gemini_api_key else 'Missing API Key' }}</div>
             </div>
-          {% endif %}
-        {% endwith %}
-        <div class="workspace-header">
-          {% block workspace_header %}{% endblock %}
+          </div>
+          <div class="stack8">
+            <div class="muted" style="font-size:12px;">Tags</div>
+            <div class="chips">
+              <span class="chip chipImportant">IMPORTANT</span>
+              <span class="chip chipConfusing">CONFUSING</span>
+              <span class="chip chipExam">EXAM-SIGNAL</span>
+            </div>
+          </div>
         </div>
-        <div class="workspace-content">
+      </aside>
+
+      <section class="panel">
+        {% block list_column %}
+        <div class="panelHeader">
+          <h2>Sessions</h2>
+          <button class="btn btnSmall" type="button" disabled>+ New Session</button>
+        </div>
+        <div class="panelBody section">
+          <input class="input" placeholder="Search sessions…" disabled />
+          <div class="stack8">
+            <div class="row rowStatic">
+              <div style="font-weight:650;">No module selected</div>
+              <div class="muted" style="font-size:12px;">Choose a module to see sessions.</div>
+            </div>
+          </div>
+        </div>
+        {% endblock %}
+      </section>
+
+      <main class="panel">
+        <div class="panelHeader">
+          <div>
+            {% block workspace_header %}
+            <h1>Workspace</h1>
+            <div class="muted" style="font-size:12px;">Build notes, tags, and weekly packs.</div>
+            {% endblock %}
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn btnGhost btnSmall" id="aiToggle" type="button">Q&amp;A</button>
+            {% block workspace_actions %}{% endblock %}
+          </div>
+        </div>
+        <div class="panelBody section">
           {% block content %}{% endblock %}
         </div>
       </main>
-      <aside class="ai-panel">
-        <div class="panel-title">AI Panel</div>
-        <div class="panel-body">
-          <div class="muted">AI notes and Q&amp;A appear here in later sprints.</div>
-        </div>
-      </aside>
     </div>
-  </body>
+  </div>
+
+  <div class="aiDrawerBackdrop" id="aiOverlay"></div>
+  <aside class="aiDrawer" id="aiDrawer">
+    <div class="aiDrawerHeader">
+      <div style="font-weight:650;">Q&amp;A</div>
+      <button class="btn btnSmall" type="button" data-ai-close>Close</button>
+    </div>
+    <div class="aiDrawerBody">
+      {% block ai_drawer %}
+      <div class="aiDrawerContent">
+        <div class="stack8" style="padding:16px;">
+          <div class="muted" style="font-size:12px;">Select a session to use AI tools.</div>
+        </div>
+      </div>
+      {% endblock %}
+    </div>
+  </aside>
+
+  {% block extra_modals %}{% endblock %}
+
+  <div class="modalBackdrop is-hidden" id="confirmBackdrop" data-modal-backdrop></div>
+  <div class="modal is-hidden" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmMessage">
+    <div class="modalHeader" id="confirmTitle">Confirm delete</div>
+    <div class="modalBody" id="confirmMessage">Are you sure?</div>
+    <div class="muted" id="confirmTarget" style="font-size:12px;"></div>
+    <div class="modalActions">
+      <button class="btn btnGhost btnSmall" type="button" data-modal-cancel>Cancel</button>
+      <button class="btn btnPrimary btnSmall" type="button" data-modal-confirm>Delete</button>
+    </div>
+  </div>
+
+  <div class="toast-stack" id="toastStack">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        {% set tone = category|default('info') %}
+        {% set timeout = 2400 if tone == 'success' else 2600 if tone == 'info' else 3500 if tone == 'warning' else 6000 if tone == 'error' else 2600 %}
+        <div class="toast toast--{{ tone }}" data-timeout="{{ timeout }}" data-toast-initial>
+          <div class="toastIcon" aria-hidden="true">
+            <div class="toastIconBadge">
+              {% if tone == 'success' %}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M6.5 12.5l3.2 3.2L17.5 8.8"></path>
+                </svg>
+              {% elif tone == 'warning' %}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 7.5v6"></path>
+                  <path d="M12 16.5h.01"></path>
+                </svg>
+              {% elif tone == 'error' %}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M8 8l8 8"></path>
+                  <path d="M16 8l-8 8"></path>
+                </svg>
+              {% else %}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 10.5v6"></path>
+                  <path d="M12 7.5h.01"></path>
+                </svg>
+              {% endif %}
+            </div>
+          </div>
+          <div class="toastContent">
+            <div class="toastTitle">{{ tone|capitalize }}</div>
+            <div class="toastMsg">{{ message }}</div>
+          </div>
+          <button class="toastClose" type="button" aria-label="Dismiss toast">&times;</button>
+        </div>
+      {% endfor %}
+    {% endwith %}
+  </div>
+</body>
 </html>

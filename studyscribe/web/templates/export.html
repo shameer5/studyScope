@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block workspace_header %}
+  <h1>Export Session</h1>
+  <div class="muted" style="font-size:12px;">Select what to include in the ZIP export.</div>
+{% endblock %}
+
+{% block content %}
+  <form class="stack8" method="post" action="{{ url_for('export_pack', module_id=module.id, session_id=session.id) }}">
+    <label class="checkboxRow">
+      <input type="checkbox" name="include_ai_notes" value="1" checked />
+      <span>AI notes</span>
+    </label>
+    <label class="checkboxRow">
+      <input type="checkbox" name="include_personal_notes" value="1" checked />
+      <span>Personal notes</span>
+    </label>
+    <label class="checkboxRow">
+      <input type="checkbox" name="include_transcript" value="1" checked />
+      <span>Transcript</span>
+    </label>
+    <label class="checkboxRow">
+      <input type="checkbox" name="include_audio" value="1" checked />
+      <span>Audio</span>
+    </label>
+    <label class="checkboxRow">
+      <input type="checkbox" name="include_attachments" value="1" checked />
+      <span>Attachments</span>
+    </label>
+    <details class="stack8">
+      <summary class="muted" style="font-size:12px;">Advanced options</summary>
+      <label class="checkboxRow">
+        <input type="checkbox" name="include_raw_chunks" value="1" />
+        <span>Raw chunks</span>
+      </label>
+      <label class="checkboxRow">
+        <input type="checkbox" name="include_prompt_manifest" value="1" />
+        <span>Prompt manifest</span>
+      </label>
+    </details>
+    <button class="btn btnPrimary" type="submit">Download ZIP</button>
+  </form>
+{% endblock %}

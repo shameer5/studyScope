@@ -1,62 +1,455 @@
 {% extends "base.html" %}
 
-{% block workspace_header %}
-  <div>
-    <div class="breadcrumb">
-      <a href="{{ url_for('view_module', module_id=module.id) }}">{{ module.name }}</a>
-      <span>/</span>
-      <span>{{ session.name }}</span>
-    </div>
-    <h1 class="page-title">{{ session.name }}</h1>
-    <div class="page-subtitle">Upload audio, run transcription, review segments.</div>
+{% block list_column %}
+<div class="panelHeader">
+  <h2>Sessions</h2>
+  <form method="post" action="{{ url_for('create_session', module_id=module.id) }}">
+    <input type="hidden" name="name" value="Untitled" />
+    <button class="btn btnSmall" type="submit">+ New Session</button>
+  </form>
+</div>
+<div class="panelBody section">
+  <input class="input" placeholder="Search sessions…" data-search-input data-search-target="session-list" />
+  <div class="stack8" id="session-list" data-search-list>
+    {% for item in sessions %}
+      <a
+        class="row rowInteractive{% if item.id == session.id %} rowActive{% endif %}"
+        href="{{ url_for('view_session', session_id=item.id) }}"
+        data-search-item
+        data-search-text="{{ item.name|lower }}"
+        data-entity-row
+        data-entity-type="session"
+        data-entity-id="{{ item.id }}"
+      >
+        <div class="rowContent">
+          <div style="font-weight:650;" data-entity-name="session:{{ item.id }}">{{ item.name }}</div>
+          <div class="muted" style="font-size:12px;">Created {{ item.created_at|format_dt }}</div>
+        </div>
+        <div class="rowActions">
+          <button class="iconBtn" type="button" data-entity-action="rename" aria-label="Rename session">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16.75V20h3.25L18.81 8.44l-3.25-3.25L4 16.75zm15.71-9.04c.39-.39.39-1.02 0-1.41l-2.01-2.01a.996.996 0 1 0-1.41 1.41l2.01 2.01c.39.39 1.02.39 1.41 0z"/></svg>
+          </button>
+          <button class="iconBtn danger" type="button" data-entity-action="delete" aria-label="Delete session">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z"/></svg>
+          </button>
+        </div>
+      </a>
+    {% else %}
+      <div class="row rowStatic" data-search-empty>
+        <div style="font-weight:650;">No sessions yet</div>
+        <div class="muted" style="font-size:12px;">Create one to start.</div>
+      </div>
+    {% endfor %}
+    {% if sessions %}
+      <div class="row rowStatic is-hidden" data-search-empty>
+        <div style="font-weight:650;">No matching sessions</div>
+        <div class="muted" style="font-size:12px;">Try a different search term.</div>
+      </div>
+    {% endif %}
   </div>
+</div>
+{% endblock %}
+
+{% block workspace_header %}
+<div class="breadcrumbs">
+  <a class="breadcrumbLink" href="{{ url_for('view_module', module_id=module.id) }}" data-entity-name="module:{{ module.id }}">{{ module.name }}</a>
+  <span class="breadcrumbDivider">›</span>
+  <span class="breadcrumbCurrent" data-entity-name="session:{{ session.id }}">{{ session.name }}</span>
+</div>
+<h1 data-entity-name="session:{{ session.id }}">{{ session.name }}</h1>
+<div class="muted" style="font-size:12px;">Upload audio, transcribe, tag, and generate AI notes.</div>
+{% endblock %}
+
+{% block workspace_actions %}
+<button class="btn btnPrimary btnSmall" type="button" id="exportOpen">Export</button>
 {% endblock %}
 
 {% block content %}
-  <section class="card">
-    <h2>Audio</h2>
-    <form class="form" method="post" enctype="multipart/form-data" action="{{ url_for('upload_audio', module_id=module.id, session_id=session.id) }}">
-      <label for="audio-file">Upload audio</label>
-      <div class="form-row">
-        <input id="audio-file" name="audio" type="file" accept=".wav,.mp3,.m4a,.aac,.flac,.ogg" required />
-        <button class="btn btn-accent" type="submit">Upload</button>
-      </div>
-    </form>
-    {% if audio_files %}
-      <div class="list compact">
-        {% for audio in audio_files %}
-          <div class="list-item">
-            <div class="list-title">{{ audio.name }}</div>
-            <div class="list-meta">{{ audio.size }} bytes</div>
-          </div>
-        {% endfor %}
-      </div>
-    {% else %}
-      <div class="muted">No audio uploaded yet.</div>
-    {% endif %}
-  </section>
-
-  <section class="card">
-    <div class="card-header">
-      <h2>Transcription</h2>
-      <form method="post" action="{{ url_for('start_transcription', module_id=module.id, session_id=session.id) }}">
-        <button class="btn btn-primary" type="submit">Run transcription</button>
-      </form>
+<div class="stack16" x-data="{ tab: 'notes' }">
+  <div class="section">
+    <div class="stack8">
+      <div style="font-weight:650;">Session setup</div>
+      <div class="muted" style="font-size:12px;">Upload files and trigger transcription.</div>
     </div>
-    <div class="job-status" data-job-id="{{ job_id or '' }}" data-job-url="{{ url_for('job_status', job_id=job_id) if job_id else '' }}" data-transcript-url="{{ transcript_url or '' }}">
-      <div class="job-progress">
-        <div class="job-progress-bar" data-job-progress style="width: 0%"></div>
-      </div>
-      <div class="job-status-label" data-job-message>
-        {% if job_id %}
-          Transcription running...
+    <div style="display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+      <div class="stack8">
+        <div style="font-weight:650;">Upload audio</div>
+        {% if audio_files %}
+          <form
+            class="stack8"
+            method="post"
+            action="{{ url_for('upload_audio', module_id=module.id, session_id=session.id) }}"
+            enctype="multipart/form-data"
+            data-confirm-replace
+          >
+            <input type="hidden" name="replace" value="1" />
+            <div class="filePicker">
+              <input
+                class="fileInputHidden"
+                id="audioReplaceInput"
+                type="file"
+                name="audio"
+                accept=".wav,.mp3,.m4a,.aac,.flac,.ogg"
+                required
+                data-file-input
+                data-file-kind="audio"
+              />
+              <label class="btn btnPrimary btnSmall" for="audioReplaceInput">Replace audio</label>
+              <div class="chips" data-file-chips></div>
+            </div>
+            <button class="btn" type="submit">Replace Audio</button>
+            <div class="hintText">Replacing audio clears the transcript.</div>
+          </form>
         {% else %}
-          Ready to transcribe.
+          <form class="stack8" method="post" action="{{ url_for('upload_audio', module_id=module.id, session_id=session.id) }}" enctype="multipart/form-data">
+            <div class="filePicker">
+              <input
+                class="fileInputHidden"
+                id="audioInput"
+                type="file"
+                name="audio"
+                accept=".wav,.mp3,.m4a,.aac,.flac,.ogg"
+                required
+                data-file-input
+                data-file-kind="audio"
+              />
+              <label class="btn btnPrimary btnSmall" for="audioInput">Choose audio</label>
+              <div class="chips" data-file-chips></div>
+            </div>
+            <button class="btn" type="submit">Upload Audio</button>
+          </form>
+        {% endif %}
+        <div class="muted" style="font-size:12px;">Supported: WAV, MP3, M4A, AAC, FLAC, OGG.</div>
+        {% if audio_files %}
+          <div class="fileList">
+            {% for audio in audio_files %}
+              <div class="fileRow">
+                <div>
+                  <div style="font-weight:650;">{{ audio.name }}</div>
+                  <div class="muted" style="font-size:12px;">{{ audio.size }}</div>
+                </div>
+                <div class="fileActions">
+                  <span class="statusPill statusSuccess">Uploaded</span>
+                  <form
+                    method="post"
+                    action="{{ url_for('delete_audio', module_id=module.id, session_id=session.id) }}"
+                    data-confirm-delete
+                    data-confirm-type="audio"
+                    data-confirm-name="{{ audio.name }}"
+                  >
+                    <input type="hidden" name="filename" value="{{ audio.name }}" />
+                    <button class="btn btnGhost btnSmall" type="submit">Delete</button>
+                  </form>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="muted" style="font-size:12px;">No audio uploaded.</div>
         {% endif %}
       </div>
+      <div class="stack8">
+        <div style="font-weight:650;">Attachments</div>
+        <form class="stack8" method="post" action="{{ url_for('upload_attachment', module_id=module.id, session_id=session.id) }}" enctype="multipart/form-data">
+          <div class="filePicker">
+            <input
+              class="fileInputHidden"
+              id="attachmentInput"
+              type="file"
+              name="attachment"
+              multiple
+              accept=".pdf,.ppt,.pptx,.doc,.docx"
+              data-file-input
+              data-file-kind="attachment"
+            />
+            <label class="btn btnPrimary btnSmall" for="attachmentInput">Choose files</label>
+            <div class="chips" data-file-chips></div>
+          </div>
+          <button class="btn" type="submit">Upload Attachments</button>
+        </form>
+        <div class="muted" style="font-size:12px;">Supported: PDF, PPT/PPTX, DOC/DOCX.</div>
+        {% if attachment_files %}
+          <div class="fileList">
+            {% for attachment in attachment_files %}
+              {% set has_text = attachment.name in attachments_with_text %}
+              <div class="fileRow">
+                <div>
+                  <div style="font-weight:650;">{{ attachment.name }}</div>
+                  <div class="muted" style="font-size:12px;">{{ attachment.size }}</div>
+                </div>
+                <div class="fileActions">
+                  <span class="statusPill {{ 'statusSuccess' if has_text else 'statusWarning' }}">
+                    {{ 'Uploaded' if has_text else 'No text found' }}
+                  </span>
+                  <form
+                    method="post"
+                    action="{{ url_for('delete_attachment', module_id=module.id, session_id=session.id) }}"
+                    data-confirm-delete
+                    data-confirm-type="attachment"
+                    data-confirm-name="{{ attachment.name }}"
+                  >
+                    <input type="hidden" name="filename" value="{{ attachment.name }}" />
+                    <button class="btn btnGhost btnSmall" type="submit">Delete</button>
+                  </form>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+          {% if attachment_warning %}
+            <div class="hintText">{{ attachment_warning }}</div>
+          {% endif %}
+        {% else %}
+          <div class="muted" style="font-size:12px;">No attachments uploaded.</div>
+        {% endif %}
+      </div>
+      <div class="stack8">
+        <div style="font-weight:650;">Transcription</div>
+        <form method="post" action="{{ url_for('start_transcription', module_id=module.id, session_id=session.id) }}">
+          <button class="btn" type="submit">Run Transcription</button>
+        </form>
+        <div
+          id="job-status"
+          class="muted"
+          style="font-size:12px;"
+          data-job-status
+          data-job-id="{{ job_id or '' }}"
+          data-job-url="{{ url_for('job_status', job_id=job_id) if job_id else '' }}"
+          data-transcript-url="{{ url_for('fetch_transcript', module_id=module.id, session_id=session.id) }}"
+        ></div>
+        <div class="hintText is-hidden" data-transcription-hint>Transcription failed. Check file type and try again.</div>
+      </div>
     </div>
-    <div id="transcriptPanel" class="transcript-panel">
-      {% include "_transcript_panel.html" %}
+  </div>
+
+  <div class="section">
+    <div class="tabs">
+      <div class="tab" :class="{ 'tabActive': tab === 'notes' }" @click="tab = 'notes'" data-session-tab="notes">Notes</div>
+      <div class="tab" :class="{ 'tabActive': tab === 'transcript' }" @click="tab = 'transcript'" data-session-tab="transcript">Transcript</div>
+      <div class="tab" :class="{ 'tabActive': tab === 'ai-notes' }" @click="tab = 'ai-notes'" data-session-tab="ai-notes">AI Notes</div>
     </div>
-  </section>
+
+    <form class="stack16" method="post" action="{{ url_for('save_annotations', module_id=module.id, session_id=session.id) }}">
+      <div x-show="tab === 'notes'" class="stack16">
+        <div class="stack8" style="position: relative;" data-notes-container>
+          <div style="font-weight:650;">Personal notes</div>
+          <div
+            class="editorSurface"
+            contenteditable="true"
+            role="textbox"
+            aria-multiline="true"
+            data-notes-editor
+            data-placeholder="Type / for commands…"
+          >{{ notes_html|safe }}</div>
+          <input type="hidden" name="personal_notes_html" data-notes-html-input />
+          <input type="hidden" name="personal_notes_markdown" data-notes-markdown-input />
+          <div class="slashMenu is-hidden" data-notes-slash-menu></div>
+          <div class="muted" style="font-size:12px;">Type / for commands</div>
+        </div>
+        <button class="btn btnPrimary" type="submit">Save Notes</button>
+      </div>
+
+      <div x-show="tab === 'transcript'" class="stack16">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <div class="stack4">
+            <div style="font-weight:650;">Transcript</div>
+            <div class="muted" style="font-size:12px;">Tag key moments and highlights.</div>
+          </div>
+          <button class="btn btnGhost btnSmall" type="button" data-delete-transcript {% if not transcript %}disabled aria-disabled="true"{% endif %}>
+            Delete transcript
+          </button>
+        </div>
+        <input class="input" type="text" placeholder="Search transcript…" data-transcript-search />
+        <div data-transcript-shell>
+          {% include "_transcript_panel.html" %}
+        </div>
+      </div>
+    </form>
+
+    <div x-show="tab === 'ai-notes'" class="stack16">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+        <div class="stack4">
+          <div style="font-weight:650;">AI Notes</div>
+          <div class="muted" style="font-size:12px;">Generated study notes with sources and tags.</div>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn btnGhost btnSmall is-hidden" type="button" data-ai-notes-skip>Skip animation</button>
+          <button class="btn btnGhost btnSmall" type="button" data-ai-notes-copy>Copy</button>
+        </div>
+      </div>
+      <form
+        method="post"
+        action="{{ url_for('start_notes', module_id=module.id, session_id=session.id) }}"
+        data-generate-form
+        data-notes-url="{{ url_for('fetch_ai_notes', module_id=module.id, session_id=session.id) }}"
+      >
+        <button
+          class="btn btnPrimary"
+          type="submit"
+          data-generate-btn
+          {% if not has_generate_content %}disabled aria-disabled="true"{% endif %}
+        >
+          {% if ai_notes %}Regenerate Notes{% else %}Generate Notes{% endif %}
+        </button>
+        <div class="hintText{% if has_generate_content %} is-hidden{% endif %}" data-generate-hint>
+          {{ generate_hint }}
+        </div>
+      </form>
+      <div class="aiNotesStatus is-hidden" data-ai-notes-status>
+        <div class="spinner" aria-hidden="true"></div>
+        <div data-ai-notes-status-text>Generating…</div>
+      </div>
+      <div
+        class="section aiNotesShell{% if not ai_notes %} is-hidden{% endif %}"
+        style="border:1px solid rgba(38,50,74,.45); border-radius:14px; padding:12px;"
+        data-ai-notes-shell
+      >
+        <div class="aiNotesOutput" data-ai-notes-output>{{ ai_notes }}</div>
+      </div>
+      <div class="muted{% if ai_notes %} is-hidden{% endif %}" style="font-size:12px;" data-ai-notes-empty>
+        No AI notes yet.
+      </div>
+    </div>
+  </div>
+</div>
+<script id="sessionMeta" type="application/json">{{ session_meta|tojson }}</script>
+{% endblock %}
+
+{% block ai_drawer %}
+<div class="aiDrawerContent">
+  <div class="stack16 qaChat" style="padding:16px;">
+    <div class="stack8" data-ai-scope-default="{{ qa_answer.scope if qa_answer else 'session' }}">
+      <div style="font-weight:650;">Scope</div>
+      <div class="segmented" role="tablist">
+        <button
+          class="segmentedBtn segmentedBtn--active"
+          type="button"
+          data-ai-scope="session"
+          {% if not has_qa_content %}disabled aria-disabled="true"{% endif %}
+        >
+          This Session
+        </button>
+        <button
+          class="segmentedBtn"
+          type="button"
+          data-ai-scope="module"
+          {% if not has_qa_content %}disabled aria-disabled="true"{% endif %}
+        >
+          This Module
+        </button>
+      </div>
+    </div>
+    {% if not has_qa_content %}
+      <div class="hintText">{{ qa_hint }}</div>
+    {% endif %}
+    <div class="qaMessages" data-qa-messages></div>
+    <div class="muted" style="font-size:12px;" data-qa-empty>Ask a question to start.</div>
+    <button class="btn btnGhost btnSmall qaJump is-hidden" type="button" data-qa-jump>Jump to latest</button>
+  </div>
+</div>
+<div class="aiDrawerFooter">
+  <form
+    class="stack8"
+    method="post"
+    action="{{ url_for('ask_question', module_id=module.id, session_id=session.id) }}"
+    data-qa-form
+    data-qa-url="{{ url_for('api_ai_ask') }}"
+    data-qa-messages-url="{{ url_for('api_ai_messages', session_id=session.id) }}"
+  >
+    <input
+      class="input"
+      type="text"
+      name="question"
+      placeholder="Ask about this session or module"
+      {% if not has_qa_content %}disabled aria-disabled="true"{% endif %}
+    />
+    <input type="hidden" name="scope" value="session" data-ai-scope-input />
+    <button class="btn btnPrimary" type="submit" {% if not has_qa_content %}disabled aria-disabled="true"{% endif %}>Send</button>
+    {% if not has_qa_content %}
+      <div class="hintText">{{ qa_hint }}</div>
+    {% endif %}
+  </form>
+</div>
+
+{% endblock %}
+
+{% block extra_modals %}
+<div class="modalBackdrop is-hidden" id="exportBackdrop" data-export-backdrop></div>
+<div
+  class="modal modal--wide is-hidden"
+  id="exportModal"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="exportTitle"
+  aria-describedby="exportDescription"
+>
+  <div class="modalHeader" id="exportTitle">Export this session</div>
+  <div class="modalBody" id="exportDescription">Choose what to include in the ZIP.</div>
+  <form
+    class="stack8"
+    id="exportForm"
+    method="post"
+    action="{{ url_for('export_pack', module_id=module.id, session_id=session.id) }}"
+    data-export-form
+  >
+    <div class="exportOptions">
+      <label class="checkboxRow">
+        <input type="checkbox" name="include_ai_notes" value="1" checked data-export-option />
+        <span>AI notes</span>
+      </label>
+      <label class="checkboxRow">
+        <input type="checkbox" name="include_personal_notes" value="1" checked data-export-option />
+        <span>Personal notes</span>
+      </label>
+      <label class="checkboxRow">
+        <input type="checkbox" name="include_transcript" value="1" checked data-export-option />
+        <span>Transcript</span>
+      </label>
+      <label class="checkboxRow">
+        <input type="checkbox" name="include_audio" value="1" checked data-export-option />
+        <span>Audio</span>
+      </label>
+      <label class="checkboxRow">
+        <input type="checkbox" name="include_attachments" value="1" checked data-export-option />
+        <span>Attachments</span>
+      </label>
+    </div>
+
+    <details class="exportAdvanced">
+      <summary>Advanced</summary>
+      <div class="stack8" style="margin-top:8px;">
+        <label class="checkboxRow">
+          <input type="checkbox" name="include_raw_chunks" value="1" />
+          <span>Include raw chunks JSON</span>
+        </label>
+        <label class="checkboxRow">
+          <input type="checkbox" name="include_prompt_manifest" value="1" />
+          <span>Include prompt + citations manifest</span>
+        </label>
+      </div>
+    </details>
+
+    <div class="modalActions">
+      <button class="btn btnGhost btnSmall" type="button" data-export-close>Cancel</button>
+      <button class="btn btnPrimary btnSmall" type="submit" data-export-submit>Export</button>
+    </div>
+  </form>
+</div>
+<div class="modalBackdrop is-hidden" id="sourcesBackdrop" data-sources-backdrop></div>
+<div
+  class="modal is-hidden sourcesModal"
+  id="sourcesModal"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="sourcesTitle"
+>
+  <div class="sourcesHeader">
+    <div class="modalHeader" id="sourcesTitle" data-sources-title>Sources</div>
+    <button class="iconBtn" type="button" data-sources-close aria-label="Close sources">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6l-12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+  <div class="sourcesContent">
+    <div class="sourcesList scrollbar-dark" data-sources-list></div>
+  </div>
+</div>
 {% endblock %}

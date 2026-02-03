@@ -1,36 +1,100 @@
 {% extends "base.html" %}
 
-{% block workspace_header %}
-  <div>
-    <h1 class="page-title">{{ module.name }}</h1>
-    <div class="page-subtitle">Manage sessions for this module.</div>
+{% block list_column %}
+<div class="panelHeader">
+  <h2>Sessions</h2>
+  <form method="post" action="{{ url_for('create_session', module_id=module.id) }}">
+    <input type="hidden" name="name" value="Untitled" />
+    <button class="btn btnSmall" type="submit">+ New Session</button>
+  </form>
+</div>
+<div class="panelBody section">
+  <input class="input" placeholder="Search sessions…" data-search-input data-search-target="session-list" />
+  <div class="stack8" id="session-list" data-search-list>
+    {% for session in sessions %}
+      <a
+        class="row rowInteractive"
+        href="{{ url_for('view_session', session_id=session.id) }}"
+        data-search-item
+        data-search-text="{{ session.name|lower }}"
+        data-entity-row
+        data-entity-type="session"
+        data-entity-id="{{ session.id }}"
+      >
+        <div class="rowContent">
+          <div style="font-weight:650;" data-entity-name="session:{{ session.id }}">{{ session.name }}</div>
+          <div class="muted" style="font-size:12px;">Created {{ session.created_at|format_dt }}</div>
+        </div>
+        <div class="rowActions">
+          <button class="iconBtn" type="button" data-entity-action="rename" aria-label="Rename session">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16.75V20h3.25L18.81 8.44l-3.25-3.25L4 16.75zm15.71-9.04c.39-.39.39-1.02 0-1.41l-2.01-2.01a.996.996 0 1 0-1.41 1.41l2.01 2.01c.39.39 1.02.39 1.41 0z"/></svg>
+          </button>
+          <button class="iconBtn danger" type="button" data-entity-action="delete" aria-label="Delete session">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z"/></svg>
+          </button>
+        </div>
+      </a>
+    {% else %}
+      <div class="row rowStatic" data-search-empty>
+        <div style="font-weight:650;">No sessions yet</div>
+        <div class="muted" style="font-size:12px;">Create one to start.</div>
+      </div>
+    {% endfor %}
+    {% if sessions %}
+      <div class="row rowStatic is-hidden" data-search-empty>
+        <div style="font-weight:650;">No matching sessions</div>
+        <div class="muted" style="font-size:12px;">Try a different search term.</div>
+      </div>
+    {% endif %}
   </div>
+</div>
+{% endblock %}
+
+{% block workspace_header %}
+<div class="breadcrumbs">
+  <span class="breadcrumbCurrent" data-entity-name="module:{{ module.id }}">{{ module.name }}</span>
+</div>
+<h1 data-entity-name="module:{{ module.id }}">{{ module.name }}</h1>
+<div class="muted" style="font-size:12px;">Plan weekly sessions and capture transcripts.</div>
 {% endblock %}
 
 {% block content %}
-  <section class="card">
-    <form class="form" method="post" action="{{ url_for('create_session', module_id=module.id) }}">
-      <label for="session-name">New session</label>
-      <div class="form-row">
-        <input id="session-name" name="name" type="text" placeholder="Session name (optional)" />
-        <button class="btn btn-accent" type="submit">Create session</button>
-      </div>
+<div class="stack16">
+  <div class="section">
+    <div class="stack8">
+      <div style="font-weight:650;">Create a session</div>
+      <div class="muted" style="font-size:12px;">Add a lecture, workshop, or study session.</div>
+    </div>
+    <form class="stack8" method="post" action="{{ url_for('create_session', module_id=module.id) }}">
+      <input class="input" type="text" name="name" placeholder="Week 1" required />
+      <button class="btn btnPrimary" type="submit">Create Session</button>
     </form>
-  </section>
+  </div>
 
-  <section class="card">
-    <h2>Sessions</h2>
-    {% if sessions %}
-      <div class="list">
-        {% for session in sessions %}
-          <a class="list-item" href="{{ url_for('view_session', session_id=session.id) }}">
-            <div class="list-title">{{ session.name }}</div>
-            <div class="list-meta">Created {{ session.created_at }}</div>
-          </a>
-        {% endfor %}
-      </div>
-    {% else %}
-      <div class="muted">No sessions yet.</div>
-    {% endif %}
-  </section>
+  <div class="section">
+    <div class="stack8">
+      <div style="font-weight:650;">Upcoming sessions</div>
+      <div class="muted" style="font-size:12px;">Open a session to add notes and transcripts.</div>
+    </div>
+    <div class="stack8">
+      {% for session in sessions %}
+        <a class="row" href="{{ url_for('view_session', session_id=session.id) }}">
+          <div style="font-weight:650;" data-entity-name="session:{{ session.id }}">{{ session.name }}</div>
+          <div class="muted" style="font-size:12px;">Created {{ session.created_at|format_dt }}</div>
+        </a>
+      {% else %}
+        <div class="row rowStatic">
+          <div style="font-weight:650;">No sessions yet</div>
+          <div class="muted" style="font-size:12px;">Add your first session to begin.</div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block ai_drawer %}
+<div class="stack8" style="padding:16px;">
+  <div class="muted" style="font-size:12px;">Select a session to use AI tools.</div>
+</div>
 {% endblock %}
