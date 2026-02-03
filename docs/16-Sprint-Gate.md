@@ -100,55 +100,6 @@ Rationale: Sprint 1 scope met; tests passing; risks documented and deferred per 
 
 ---
 
-## Sprint: Sprint 2 (AI & Q&A)  Date: 2026-02-03
-
-### Product Manager
-- Scope matches sprint plan and V1 parity guardrails.
-- Acceptance criteria satisfied for in-scope stories.
-- Risks updated if new issues discovered.
-Status: Pass  
-Notes: Sprint 2 stories delivered (search/filter transcript, AI notes, Q&A, export).
-
-### Software Architect
-- Routes/contracts align with `docs/route-inventory.md`.
-- Storage layout aligns with `docs/file-layout-contract.md`.
-- No unauthorized architectural changes.
-Status: Pass  
-Notes: Implemented Sprint 2 routes, notes/Q&A persistence, attachment indexing, and export layout per contract.
-
-### Backend Engineer
-- Endpoint response shapes match `docs/06-API-Spec.md`.
-- Error handling matches documented guardrails.
-- Data persistence matches the file layout contract.
-Status: Pass  
-Notes: AI endpoints return documented JSON shapes; export manifest matches contract; attachment index written to filesystem.
-
-### Frontend / UX Integrator
-- Layout and interactions align with the design system and `docs/03-UX-Flows-and-Edge-Cases.md`.
-- Offline assets only (no CDN).
-- UI behaviors match `studyscribe/web/static/js/app.js`.
-Status: Pass  
-Notes: Added transcript search input; existing UI hooks wired to Sprint 2 endpoints.
-
-### QA / Parity Engineer
-- Golden path test passes for sprint scope.
-- Contract checks run without drift.
-- Reported regressions addressed.
-Status: Pass  
-Notes: Sprint 2 tests added for notes, Q&A, and export; pytest suite passes.
-
-### Security Reviewer
-- Upload validation and secrets handling align with `docs/07-Integrations-and-Secrets.md`.
-- Risks tracked in `docs/12-Risk-Register.md` if deferred.
-Status: Pass (with tracked risks)  
-Notes: CSRF/FLASK_SECRET risks remain documented (S1/S2); no new regressions introduced.
-
-## Final Gate Decision
-Decision: Go  
-Rationale: Sprint 2 scope met; tests passing; risks documented and deferred per plan.
-
----
-
 ## Sprint: Sprint 2 (UI/UX Parity)  Date: 2026-02-03
 
 ### Product Manager
@@ -192,3 +143,54 @@ Notes: No new security risks introduced in Sprint 2 scope.
 ## Final Gate Decision
 Decision: Go  
 Rationale: UI parity delivered; tests green; no contract drift.
+
+---
+
+## Sprint: Sprint 3 (AI & Q&A)  Date: 2026-02-03
+
+### Product Manager
+- Scope matches sprint plan and V1 parity guardrails.
+- Acceptance criteria satisfied for in-scope stories.
+- Risks updated if new issues discovered.
+Status: Pass  
+Notes: Sprint 3 scope delivered (US-2-2 search, US-3-1 notes, US-3-2 Q&A, US-4-1 export). No scope creep beyond release plan.
+
+### Software Architect
+- Routes/contracts align with `docs/route-inventory.md`.
+- Storage layout aligns with `docs/file-layout-contract.md`.
+- No unauthorized architectural changes.
+Status: Pass  
+Notes: Routes and contracts aligned to `docs/route-inventory.md`; export layout and prompt manifest match file layout contract.
+
+### Backend Engineer
+- Endpoint response shapes match `docs/06-API-Spec.md`.
+- Error handling matches documented guardrails.
+- Data persistence matches the file layout contract.
+Status: Pass  
+Notes: API responses align to `docs/06-API-Spec.md` and source preview payload matches route inventory; persistence writes to `DATA_DIR`.
+
+### Frontend / UX Integrator
+- Layout and interactions align with the design system and `docs/03-UX-Flows-and-Edge-Cases.md`.
+- Offline assets only (no CDN).
+- UI behaviors match `studyscribe/web/static/js/app.js`.
+Status: Pass  
+Notes: Transcript search ranks and highlights matches; sources preview uses API payloads; UI remains offline-first.
+
+### QA / Parity Engineer
+- Golden path test passes for sprint scope.
+- Contract checks run without drift.
+- Reported regressions addressed.
+Status: Pass  
+Notes: Sprint 3 tests cover notes, Q&A, and export; pytest suite passes.
+
+### Security Reviewer
+- Upload validation and secrets handling align with `docs/07-Integrations-and-Secrets.md`.
+- Risks tracked in `docs/12-Risk-Register.md` if deferred.
+Status: Pass (with tracked risks)  
+Notes: CSRF/FLASK_SECRET risks remain documented (S1/S2); no new regressions introduced.
+
+## Final Gate Decision
+Decision: Go  
+Rationale: Sprint 3 scope met; tests passing; risks documented and deferred per plan.
+
+---

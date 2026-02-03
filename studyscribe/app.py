@@ -1225,6 +1225,16 @@ def api_source_preview(source_id: str | None = None):
             source_json = json.loads(row["source_json"])
         except json.JSONDecodeError:
             source_json = {}
+    locator = source_json.get("locator") or {}
+    meta = dict(locator) if isinstance(locator, dict) else {}
+    if row["kind"] == "transcript":
+        if "t_start" in meta and "start_time" not in meta:
+            meta["start_time"] = meta.get("t_start")
+        if "t_end" in meta and "end_time" not in meta:
+            meta["end_time"] = meta.get("t_end")
+    highlight = None
+    if row["kind"] == "transcript":
+        highlight = {"text": "", "timeout_ms": 5000}
     response = {
         "source_id": row["source_id"],
         "kind": row["kind"],
@@ -1232,8 +1242,10 @@ def api_source_preview(source_id: str | None = None):
         "excerpt": source_json.get("excerpt") or row["snippet"],
         "excerpt_full": source_json.get("excerpt") or row["snippet"],
         "open_url": source_json.get("open_url") or row["url"],
-        "meta": source_json.get("locator") or {},
+        "meta": meta,
     }
+    if highlight is not None:
+        response["highlight"] = highlight
     return jsonify(response)
 
 

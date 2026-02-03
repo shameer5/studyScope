@@ -1494,7 +1494,7 @@ const setupQaChat = (showToast, sessionMeta) => {
         )}`,
         { headers: { Accept: "application/json" } },
       );
-      if (!response.ok || !data.ok || !data.source) {
+      if (!response.ok || data.ok === false) {
         console.error("Source preview API error", { status: response && response.status, data });
         if (typeof showToast === "function") {
           showToast("error", "Failed to load source preview.");
@@ -1503,11 +1503,37 @@ const setupQaChat = (showToast, sessionMeta) => {
         }
         return;
       }
-      const previewSource = data.source || {};
-      const preview = data.preview || {};
+      const previewSource = data && data.source ? data.source : data;
+      const preview = data && data.preview ? data.preview : {};
+      if (!previewSource) {
+        if (typeof showToast === "function") {
+          showToast("error", "Failed to load source preview.");
+        } else {
+          alert("Failed to load source preview.");
+        }
+        return;
+      }
       // Internal sources jump in-place; attachments open in a new tab.
       if (!isAttachmentKind(previewSource.kind)) {
-        const jumped = jumpToInternalSource(preview.jump || null);
+        const meta = previewSource.meta || previewSource.locator || {};
+        let jump = preview.jump || null;
+        if (!jump) {
+          const anchorId =
+            meta.anchor ||
+            meta.anchor_id ||
+            (meta.segment_id !== undefined && meta.segment_id !== null
+              ? `seg-${meta.segment_id}`
+              : null);
+          if (anchorId) {
+            jump = {
+              type: "internal_scroll",
+              kind: previewSource.kind,
+              anchor_id: anchorId,
+              anchor_selector: meta.anchor_selector || null,
+            };
+          }
+        }
+        const jumped = jumpToInternalSource(jump);
         if (jumped) {
           closeSources();
           closeAiDrawer();
@@ -1969,6 +1995,7 @@ const setupTranscriptControls = (showToast, sessionMeta, notesControls, openConf
     });
     if (!response.ok) return false;
     shell.innerHTML = data.html || "";
+    document.dispatchEvent(new CustomEvent("studyscribe:transcript-updated"));
     if (sessionMeta) {
       sessionMeta.hasTranscript = !!data.has_transcript;
     }
@@ -2014,17 +2041,94 @@ const setupTranscriptControls = (showToast, sessionMeta, notesControls, openConf
 const setupTranscriptSearch = () => {
   const input = document.querySelector("[data-transcript-search]");
   const shell = document.querySelector("[data-transcript-shell]");
-  if (!input || !shell) return;
-  const applyFilter = () => {
-    const term = (input.value || "").trim().toLowerCase();
-    shell.querySelectorAll("[data-transcript-segment]").forEach((segment) => {
-      const text = segment.textContent || "";
-      const visible = !term || text.toLowerCase().includes(term);
-      segment.classList.toggle("is-hidden", !visible);
-    });
+  if (!input || !shell) return { refresh: () => {} };
+  const tokenize = (value) =>
+    String(value || "")
+      .toLowerCase()
+      .match(/[a-z0-9]+/g) || [];
+  const escapeRegExp = (value) => String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  let segmentRows = [];
+
+  const highlightText = (rawText, tokens) => {
+    const safe = escapeHtml(rawText);
+    if (!tokens.length) return safe;
+    const pattern = new RegExp(`(${tokens.map(escapeRegExp).join("|")})`, "ig");
+    return safe.replace(pattern, '<mark class="transcriptHighlight">$1</mark>');
   };
+
+  const applyFilter = () => {
+    const term = (input.value || "").trim();
+    const tokens = tokenize(term);
+    const list = shell.querySelector("[data-transcript-list]");
+    if (!list || !segmentRows.length) return;
+
+    if (!tokens.length) {
+      segmentRows
+        .slice()
+        .sort((a, b) => a.index - b.index)
+        .forEach(({ segment, textEl, rawText }) => {
+          segment.classList.remove("is-hidden");
+          if (textEl) {
+            textEl.innerHTML = escapeHtml(rawText);
+          }
+          list.appendChild(segment);
+        });
+      return;
+    }
+
+    const scored = segmentRows.map((row) => {
+      const textTokens = tokenize(row.rawText);
+      if (!textTokens.length) {
+        return { ...row, score: 0 };
+      }
+      const counts = {};
+      textTokens.forEach((token) => {
+        counts[token] = (counts[token] || 0) + 1;
+      });
+      let score = 0;
+      tokens.forEach((token) => {
+        score += counts[token] || 0;
+      });
+      return { ...row, score };
+    });
+
+    scored
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return a.index - b.index;
+      })
+      .forEach(({ segment, textEl, rawText, score }) => {
+        const visible = score > 0;
+        segment.classList.toggle("is-hidden", !visible);
+        if (textEl) {
+          textEl.innerHTML = highlightText(rawText, tokens);
+        }
+        list.appendChild(segment);
+      });
+  };
+
+  const indexSegments = () => {
+    const list = shell.querySelector("[data-transcript-list]");
+    if (!list) {
+      segmentRows = [];
+      return;
+    }
+    segmentRows = Array.from(list.querySelectorAll("[data-transcript-segment]")).map(
+      (segment, index) => {
+        const textEl = segment.querySelector("[data-transcript-text]");
+        const rawText = textEl ? textEl.textContent || "" : segment.textContent || "";
+        return { segment, textEl, rawText, index };
+      },
+    );
+    applyFilter();
+  };
+
   input.addEventListener("input", applyFilter);
-  applyFilter();
+  document.addEventListener("studyscribe:transcript-updated", () => {
+    indexSegments();
+  });
+  indexSegments();
+  return { refresh: indexSegments };
 };
 
 const setupTranscriptionStatus = (showToast, sessionMeta, notesControls, refreshTranscript) => {

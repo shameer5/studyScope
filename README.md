@@ -9,11 +9,15 @@ Local-first study session workspace. Sprint 1 delivers module/session management
 - Parity-first UI using the StudyScribe Design System.
 
 ## Sprint 2 scope
-- Upload attachments and extract text for retrieval.
+- Port StudyScribe reference UI layout, modals, and interactions.
+- Ensure offline-first static assets (no CDN dependencies).
+- Provide UI stubs for AI/Q&A/export until Sprint 3.
+
+## Sprint 3 scope
+- Transcript search with relevance ranking and highlight.
 - Generate AI notes and suggested tags.
 - Q&A with citations over transcript and attachments.
-- Export session ZIP with selected artifacts.
-- Transcript tagging and personal notes.
+- Export session ZIP with selected artifacts and manifest.
 
 ## Setup
 1. Install Python dependencies:

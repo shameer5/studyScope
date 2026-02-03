@@ -31,7 +31,7 @@ All routes use HTTP methods: GET (read), POST (create/update), PATCH (update), D
 - **Response**: HTML page (`index.html`) with modules
 - **Context Passed**:
   - `modules`: List of all modules from DB, ordered newest first
-- **Called From**: Direct URL navigation, [app.js:0](studyscribe/web/static/js/app.js) (home link in sidebar)
+- **Called From**: Direct URL navigation, [app.js:1171](studyscribe/web/static/js/app.js#L1171) (home link in sidebar)
 
 ---
 
@@ -91,7 +91,7 @@ name=Organic+Chemistry
   ```
 - **Side Effects**: Updates `name` in `modules` table
 - **Called From**:
-  - [app.js:2115](studyscribe/web/static/js/app.js#L2115): Inline rename via `setupEntityActions()`, sends PATCH with JSON payload
+  - [app.js:2233](studyscribe/web/static/js/app.js#L2233): Inline rename via `setupEntityActions()`, sends PATCH with JSON payload
 
 **Example**:
 ```bash
@@ -115,7 +115,7 @@ Content-Type: application/json
   - Deletes filesystem directory at `DATA_DIR/modules/<module_id>/`
   - Deletes module row from DB
 - **Called From**:
-  - [app.js:2127](studyscribe/web/static/js/app.js#L2127): Confirm modal, sends DELETE via `requestJson()`
+  - [app.js:2290](studyscribe/web/static/js/app.js#L2290): Confirm modal, sends DELETE via `requestJson()`
 
 **Example**:
 ```bash
@@ -207,7 +207,7 @@ GET /sessions/c26ed045-9b3b-47a7-b430-d3e2b5476d52?rename=1&job_id=job-12345
   ```
 - **Side Effects**: Updates `name` in `sessions` table
 - **Called From**:
-  - [app.js:2115](studyscribe/web/static/js/app.js#L2115): Inline rename, sends PATCH with JSON
+  - [app.js:2233](studyscribe/web/static/js/app.js#L2233): Inline rename, sends PATCH with JSON
 
 **Example**:
 ```bash
@@ -233,7 +233,7 @@ Content-Type: application/json
   - Deletes filesystem directory at `DATA_DIR/modules/<module_id>/sessions/<session_id>/`
   - Deletes session row from DB
 - **Called From**:
-  - [app.js:2127](studyscribe/web/static/js/app.js#L2127): Confirm modal, sends DELETE
+  - [app.js:2290](studyscribe/web/static/js/app.js#L2290): Confirm modal, sends DELETE
 
 **Example**:
 ```bash
@@ -310,7 +310,7 @@ Flash: "Attachment uploaded."
   - Deletes file from `DATA_DIR/modules/<module_id>/sessions/<session_id>/audio/<filename>`
 - **Called From**:
   - [session.html:135](studyscribe/web/templates/session.html#L135): Form with `data-confirm-delete`, `url_for("delete_audio", ...)`
-  - [app.js:2341](studyscribe/web/static/js/app.js#L2341): `setupConfirmDeleteForms()` intercepts, shows confirm modal, sends POST
+  - [app.js:2337](studyscribe/web/static/js/app.js#L2337): `setupConfirmDeleteForms()` intercepts, shows confirm modal, sends POST
 
 **Example**:
 ```bash
@@ -336,7 +336,7 @@ filename=lecture.mp3
   - Rebuilds attachment text index
 - **Called From**:
   - [session.html:186](studyscribe/web/templates/session.html#L186): Form with `data-confirm-delete`, `url_for("delete_attachment", ...)`
-  - [app.js:2341](studyscribe/web/static/js/app.js#L2341): `setupConfirmDeleteForms()` intercepts
+  - [app.js:2337](studyscribe/web/static/js/app.js#L2337): `setupConfirmDeleteForms()` intercepts
 
 **Example**:
 ```bash
@@ -382,7 +382,7 @@ GET /modules/57819.../sessions/c26ed045.../attachments/slides.pdf
   - Excerpt highlighting
   - File metadata
 - **Called From**:
-  - [app.js:1745](studyscribe/web/static/js/app.js): Source preview modal, HTMX `hx-get`
+  - [app.js:1491](studyscribe/web/static/js/app.js#L1491): Source preview modal, HTMX `hx-get`
 
 **Example**:
 ```bash
@@ -431,11 +431,11 @@ Flash: "Transcription started."
   }
   ```
 - **Called From**:
-  - [app.js:2066](studyscribe/web/static/js/app.js#L2066): `setupTranscriptionStatus()` polls every 2 seconds via `fetchJson(`/jobs/${jobId}`)`
+  - [app.js:2144](studyscribe/web/static/js/app.js#L2144): `setupTranscriptionStatus()` polls every 2 seconds via `fetchJson(`/jobs/${jobId}`)`
 
 **Polling Contract** (used by client):
 ```javascript
-// app.js line 2066
+// app.js line 2144
 const poll = async () => {
   const { response, data } = await fetchJson(`/jobs/${jobId}`);
   if (data.status === "success") {
@@ -474,7 +474,7 @@ GET /jobs/job-abc123
   ```
 - **Side Effects**: None (read-only)
 - **Called From**:
-  - [app.js:2000](studyscribe/web/static/js/app.js#L2000): `setupTranscriptControls()` calls `refreshTranscript()`, which fetches this endpoint and updates DOM via HTMX or direct innerHTML update
+  - [app.js:1991](studyscribe/web/static/js/app.js#L1991): `setupTranscriptControls()` calls `refreshTranscript()`, which fetches this endpoint and updates DOM via HTMX or direct innerHTML update
 
 **Example**:
 ```bash
@@ -535,7 +535,7 @@ Content-Type: application/json
   - Updates/persists tags in `session_dir/annotations.json` under key `tags[segment_id]`
   - Tags are enum: `{"IMPORTANT", "CONFUSING", "EXAM-SIGNAL"}`
 - **Called From**:
-  - [app.js:1845](studyscribe/web/static/js/app.js): `bindSegmentTags()`, listens to checkbox clicks on `[data-segment-tag]` elements, sends POST with JSON
+  - [app.js:1954](studyscribe/web/static/js/app.js#L1954): `bindSegmentTags()`, listens to checkbox clicks on `[data-segment-tag]` elements, sends POST with JSON
 
 **Example**:
 ```bash
@@ -608,7 +608,7 @@ Flash: "Annotations saved."
   - Flash message: "Generating notes..."
 - **Called From**:
   - [session.html](studyscribe/web/templates/session.html): "Generate Notes" button form
-  - [app.js:1505](studyscribe/web/static/js/app.js): `setupGenerateNotes()` can submit as form or JSON
+  - [app.js:1860](studyscribe/web/static/js/app.js#L1860): `setupGenerateNotes()` can submit as form or JSON
 
 **Example**:
 ```bash
@@ -634,7 +634,7 @@ Flash: "Generating notes..."
   - 200: Notes found and returned
   - 404: Notes not yet generated
 - **Called From**:
-  - [app.js:1410](studyscribe/web/static/js/app.js): `setupGenerateNotes()` refreshes notes after job completes
+  - [app.js:1835](studyscribe/web/static/js/app.js#L1835): `setupGenerateNotes()` refreshes notes after job completes
 
 **Example**:
 ```bash
@@ -711,7 +711,7 @@ GET /modules/57819.../sessions/c26ed045.../ai-notes
   - Stores assistant response in DB
   - Stores sources in DB (`ai_message_sources` table)
 - **Called From**:
-  - [app.js:1360](studyscribe/web/static/js/app.js): `setupQaChat()` form submission, fetches JSON
+  - [app.js:1651](studyscribe/web/static/js/app.js#L1651): `setupQaChat()` form submission, fetches JSON
 
 **Example**:
 ```bash
@@ -772,7 +772,7 @@ Content-Type: application/json
 - **Error Responses**:
   - `404 {"error": "Session not found."}` — Invalid session_id
 - **Called From**:
-  - [app.js:1360](studyscribe/web/static/js/app.js): `setupQaChat()` initial load, fetches chat history
+  - [app.js:1613](studyscribe/web/static/js/app.js#L1613): `setupQaChat()` initial load, fetches chat history
 
 **Example**:
 ```bash
@@ -836,7 +836,7 @@ GET /api/sessions/c26ed045-9b3b-47a7-b430-d3e2b5476d52/ai/messages
   - `404 {"ok": false, "error": "Session not found."}` 
   - `404 {"ok": false, "error": "Source not found."}`
 - **Called From**:
-  - [app.js:1745](studyscribe/web/static/js/app.js): Source link click in Q&A answer, fetches preview payload and renders modal
+  - [app.js:1410](studyscribe/web/static/js/app.js#L1410): Source link click in Q&A answer, fetches preview payload and renders modal
 
 **Example**:
 ```bash
@@ -887,7 +887,7 @@ GET /api/source_preview?source_id=src_abc123&session_id=c26ed045-...
   - `500 {"ok": false, "error": "Export failed. Please try again."}`
 - **Called From**:
   - [session.html](studyscribe/web/templates/session.html): Export button form
-  - [app.js:1190](studyscribe/web/static/js/app.js): `setupExportModal()` shows/submits export options
+  - [app.js:984](studyscribe/web/static/js/app.js#L984): `setupExportModal()` shows/submits export options
 
 **Example**:
 ```bash
