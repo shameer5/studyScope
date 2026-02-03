@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block workspace_header %}
+  <div>
+    <h1 class="page-title">{{ module.name }}</h1>
+    <div class="page-subtitle">Manage sessions for this module.</div>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <section class="card">
+    <form class="form" method="post" action="{{ url_for('create_session', module_id=module.id) }}">
+      <label for="session-name">New session</label>
+      <div class="form-row">
+        <input id="session-name" name="name" type="text" placeholder="Session name (optional)" />
+        <button class="btn btn-accent" type="submit">Create session</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>Sessions</h2>
+    {% if sessions %}
+      <div class="list">
+        {% for session in sessions %}
+          <a class="list-item" href="{{ url_for('view_session', session_id=session.id) }}">
+            <div class="list-title">{{ session.name }}</div>
+            <div class="list-meta">Created {{ session.created_at }}</div>
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="muted">No sessions yet.</div>
+    {% endif %}
+  </section>
+{% endblock %}

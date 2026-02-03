@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block workspace_header %}
+  <div>
+    <div class="breadcrumb">
+      <a href="{{ url_for('view_module', module_id=module.id) }}">{{ module.name }}</a>
+      <span>/</span>
+      <span>{{ session.name }}</span>
+    </div>
+    <h1 class="page-title">{{ session.name }}</h1>
+    <div class="page-subtitle">Upload audio, run transcription, review segments.</div>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <section class="card">
+    <h2>Audio</h2>
+    <form class="form" method="post" enctype="multipart/form-data" action="{{ url_for('upload_audio', module_id=module.id, session_id=session.id) }}">
+      <label for="audio-file">Upload audio</label>
+      <div class="form-row">
+        <input id="audio-file" name="audio" type="file" accept=".wav,.mp3,.m4a,.aac,.flac,.ogg" required />
+        <button class="btn btn-accent" type="submit">Upload</button>
+      </div>
+    </form>
+    {% if audio_files %}
+      <div class="list compact">
+        {% for audio in audio_files %}
+          <div class="list-item">
+            <div class="list-title">{{ audio.name }}</div>
+            <div class="list-meta">{{ audio.size }} bytes</div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="muted">No audio uploaded yet.</div>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <div class="card-header">
+      <h2>Transcription</h2>
+      <form method="post" action="{{ url_for('start_transcription', module_id=module.id, session_id=session.id) }}">
+        <button class="btn btn-primary" type="submit">Run transcription</button>
+      </form>
+    </div>
+    <div class="job-status" data-job-id="{{ job_id or '' }}" data-job-url="{{ url_for('job_status', job_id=job_id) if job_id else '' }}" data-transcript-url="{{ transcript_url or '' }}">
+      <div class="job-progress">
+        <div class="job-progress-bar" data-job-progress style="width: 0%"></div>
+      </div>
+      <div class="job-status-label" data-job-message>
+        {% if job_id %}
+          Transcription running...
+        {% else %}
+          Ready to transcribe.
+        {% endif %}
+      </div>
+    </div>
+    <div id="transcriptPanel" class="transcript-panel">
+      {% include "_transcript_panel.html" %}
+    </div>
+  </section>
+{% endblock %}

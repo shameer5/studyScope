@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>StudyScribe</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}" />
+    <script defer src="{{ url_for('static', filename='js/app.js') }}"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-title">StudyScribe</div>
+          <div class="brand-subtitle">Offline-first workspace</div>
+        </div>
+        <nav class="nav">
+          <a class="nav-link" href="{{ url_for('home') }}">Home</a>
+          <div class="nav-section-title">Modules</div>
+          {% if modules %}
+            <div class="nav-list">
+              {% for module in modules %}
+                <a class="nav-link" href="{{ url_for('view_module', module_id=module.id) }}">
+                  {{ module.name }}
+                </a>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="nav-empty">No modules yet.</div>
+          {% endif %}
+        </nav>
+      </aside>
+      <main class="workspace">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-stack">
+              {% for category, message in messages %}
+                <div class="flash flash-{{ category }}">{{ message }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+        <div class="workspace-header">
+          {% block workspace_header %}{% endblock %}
+        </div>
+        <div class="workspace-content">
+          {% block content %}{% endblock %}
+        </div>
+      </main>
+      <aside class="ai-panel">
+        <div class="panel-title">AI Panel</div>
+        <div class="panel-body">
+          <div class="muted">AI notes and Q&amp;A appear here in later sprints.</div>
+        </div>
+      </aside>
+    </div>
+  </body>
+</html>
