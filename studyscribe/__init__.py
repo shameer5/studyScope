@@ -1,0 +1,1 @@
+"""StudyScribe package (scaffold)."""

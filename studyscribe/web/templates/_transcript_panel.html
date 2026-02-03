@@ -1,0 +1,12 @@
+{% if transcript %}
+  <div class="transcript-list">
+    {% for segment in transcript %}
+      <div class="transcript-segment">
+        <div class="timestamp">{{ segment.start|format_ts }} - {{ segment.end|format_ts }}</div>
+        <div class="segment-text">{{ segment.text }}</div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="muted">No transcript yet.</div>
+{% endif %}

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block workspace_header %}
+  <div>
+    <h1 class="page-title">Modules</h1>
+    <div class="page-subtitle">Create a module to start organizing sessions.</div>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <section class="card">
+    <form class="form" method="post" action="{{ url_for('create_module') }}">
+      <label for="module-name">Module name</label>
+      <div class="form-row">
+        <input id="module-name" name="name" type="text" placeholder="e.g., Computer Science 101" required />
+        <button class="btn btn-accent" type="submit">Create module</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>Recent modules</h2>
+    {% if modules %}
+      <div class="list">
+        {% for module in modules %}
+          <a class="list-item" href="{{ url_for('view_module', module_id=module.id) }}">
+            <div class="list-title">{{ module.name }}</div>
+            <div class="list-meta">Created {{ module.created_at }}</div>
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="muted">No modules created yet.</div>
+    {% endif %}
+  </section>
+{% endblock %}
