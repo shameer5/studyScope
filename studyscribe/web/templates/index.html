@@ -29,6 +29,7 @@
       <div class="muted" style="font-size:12px;">Start a workspace for a course, project, or training series.</div>
     </div>
     <form class="stack8" method="post" action="{{ url_for('create_module') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <input class="input" type="text" name="name" placeholder="MISDI - Digital Innovation" required />
       <button class="btn btnPrimary" type="submit">Create Module</button>
     </form>

@@ -13,6 +13,7 @@ Risk T1: Transcription runtime dependency failure
   - Add Dockerfile with explicit `ffmpeg` installation (`apt-get install ffmpeg` for Debian-based images).
   - Pin `faster_whisper` version in `requirements.txt`.
   - CI should verify both are available before running transcription tests.
+ - Status: Mitigated in Sprint 4 with Dockerfile + CI runtime dependency checks.
 
 Risk T2: Gemini API quota/rate limits exceeded
 - Description: User generates notes/Q&A frequently and hits Gemini API quota or rate limits.
@@ -57,12 +58,13 @@ Risk T5: Job executor thread pool exhaustion
 
 Risk D1: No CI/CD pipeline
 - Description: No automated testing, deployment, or rollback in repo; all manual.
-- Evidence: no `.github/workflows/`, `Jenkinsfile`, or `deploy.sh`.
+- Evidence: `.github/workflows/ci.yml` runs pytest and Docker build verification.
 - Likelihood: High.
 - Impact: High (slow iteration, human error).
 - Mitigation:
   - Set up GitHub Actions or GitLab CI to run `pytest` on PRs.
   - Automate deployments with a simple shell script or container orchestration (Docker Compose, Kubernetes).
+ - Status: Mitigated in Sprint 4 via `.github/workflows/ci.yml`.
 
 Risk D2: Documentation drift
 - Description: Code changes but `/docs` are not updated, causing stale guidance.
@@ -85,22 +87,24 @@ Risk D3: Dependency version conflicts or obsolescence
 3) Security Risks
 
 Risk S1: Weak default FLASK_SECRET
-- Description: `app.secret_key` defaults to `studyscribe-dev` if `FLASK_SECRET` env var is not set (`studyscribe/app.py`).
-- Evidence: `app.secret_key = os.getenv("FLASK_SECRET", "studyscribe-dev")`.
-- Likelihood: High (default is used in development; may leak into production if not overridden).
+- Description: Missing `FLASK_SECRET` could allow weak session signing if not enforced in production.
+- Evidence: `studyscribe/app.py` now raises when `FLASK_SECRET` is missing outside dev/test (`_resolve_flask_secret`).
+- Likelihood: Low (enforced in production mode).
 - Impact: High (session cookies are unsigned; attacker can forge sessions).
 - Mitigation:
   - Remove the insecure default; raise an error if `FLASK_SECRET` is not set in production.
   - Document requirement in deployment guide (e.g., `docs/10-Deployment-and-Ops.md`).
+ - Status: Mitigated in Sprint 4 by enforcing `FLASK_SECRET` outside dev/test.
 
 Risk S2: CSRF vulnerability
-- Description: Forms in `studyscribe/web/templates/*.html` have no CSRF tokens. If app is exposed to the internet, attackers can forge requests.
-- Evidence: form elements in `base.html` and `session.html` lack `csrf_token` fields.
-- Likelihood: Low (app is local-first by design); High if deployed without network isolation.
+- Description: CSRF could allow forged requests if protection were absent and the app is exposed.
+- Evidence: Flask-WTF CSRF is enabled; templates include `csrf_token()` and JS sends `X-CSRFToken` headers.
+- Likelihood: Low (CSRF protection enabled; local-first by design).
 - Impact: High (attacker can delete sessions, upload malicious files, etc.).
 - Mitigation:
   - Add Flask-WTF or similar for CSRF token generation and validation.
   - Document network-level access controls (e.g., VPN, firewall, localhost-only).
+ - Status: Mitigated in Sprint 4 via Flask-WTF CSRF tokens and JS headers.
 
 Risk S3: Unauthenticated endpoints
 - Description: All routes in `studyscribe/app.py` are unauthenticated. Any user on the network can access sessions.

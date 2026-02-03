@@ -194,3 +194,49 @@ Decision: Go
 Rationale: Sprint 3 scope met; tests passing; risks documented and deferred per plan.
 
 ---
+## Sprint: Sprint 4 (DevOps & Hardening)  Date: 2026-02-03
+
+### Product Manager
+- Scope matches sprint plan and V1 parity guardrails.
+- Acceptance criteria satisfied for in-scope stories.
+- Risks updated if new issues discovered.
+Status: Pass  
+Notes: Sprint 4 scope delivered (US-5-2 containerization, security hardening, CI/CD). No new features or contract drift; risks updated in `docs/12-Risk-Register.md`.
+
+### Software Architect
+- Routes/contracts align with `docs/route-inventory.md`.
+- Storage layout aligns with `docs/file-layout-contract.md`.
+- No unauthorized architectural changes.
+Status: Pass  
+Notes: Routes and file layout unchanged; Dockerfile preserves `studyscribe/data` and `studyscribe.db` paths per contract.
+
+### Backend Engineer
+- Endpoint response shapes match `docs/06-API-Spec.md`.
+- Error handling matches documented guardrails.
+- Data persistence matches the file layout contract.
+Status: Pass  
+Notes: No endpoint payload changes; CSRF enforced via Flask-WTF without altering response shapes; persistence still uses `DATA_DIR`.
+
+### Frontend / UX Integrator
+- Layout and interactions align with the design system and `docs/03-UX-Flows-and-Edge-Cases.md`.
+- Offline assets only (no CDN).
+- UI behaviors match `studyscribe/web/static/js/app.js`.
+Status: Pass  
+Notes: UI unchanged; added CSRF hidden inputs and JS headers only; all assets remain local.
+
+### QA / Parity Engineer
+- Golden path test passes for sprint scope.
+- Contract checks run without drift.
+- Reported regressions addressed.
+Status: Pass  
+Notes: `python -m pytest -q` (7 passed) on 2026-02-03.
+
+### Security Reviewer
+- Upload validation and secrets handling align with `docs/07-Integrations-and-Secrets.md`.
+- Risks tracked in `docs/12-Risk-Register.md` if deferred.
+Status: Pass  
+Notes: `FLASK_SECRET` enforced outside dev/test; CSRF tokens via Flask-WTF + JS headers; risks S1/S2 updated.
+
+## Final Gate Decision
+Decision: Go  
+Rationale: Sprint 4 scope met; CI + Dockerfile added; security hardening complete; tests passing.

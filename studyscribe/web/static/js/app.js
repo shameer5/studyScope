@@ -24,6 +24,15 @@ const FILE_RULES = {
   },
 };
 
+const getCsrfToken = () =>
+  document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "";
+
+const withCsrfHeaders = (headers = {}) => {
+  const token = getCsrfToken();
+  if (!token) return headers;
+  return { ...headers, "X-CSRFToken": token };
+};
+
 // Track generated heading slugs to avoid duplicates in the DOM.
 const _usedHeadingSlugs = new Set();
 
@@ -68,7 +77,9 @@ const safeJsonParse = (value, fallback = null) => {
 };
 
 const fetchJson = async (url, options = {}) => {
-  const response = await fetch(url, options);
+  const nextOptions = { ...options };
+  nextOptions.headers = withCsrfHeaders(options.headers || {});
+  const response = await fetch(url, nextOptions);
   const data = await response.json().catch(() => ({}));
   return { response, data };
 };
@@ -1052,9 +1063,9 @@ const setupExportModal = (showToast) => {
       const response = await fetch(form.action, {
         method: "POST",
         body: formData,
-        headers: {
+        headers: withCsrfHeaders({
           Accept: "application/zip, application/json",
-        },
+        }),
       });
       console.log(`status ${response.status}`);
 
@@ -2197,7 +2208,9 @@ const setupEntityActions = (openConfirm, showToast, sessionMeta) => {
   };
 
   const requestJson = async (url, options) => {
-    const response = await fetch(url, options);
+    const nextOptions = { ...options };
+    nextOptions.headers = withCsrfHeaders(options && options.headers ? options.headers : {});
+    const response = await fetch(url, nextOptions);
     const data = await response.json().catch(() => ({}));
     return { response, data };
   };
@@ -2337,9 +2350,9 @@ const setupConfirmDeleteForms = (openConfirm) => {
           const response = await fetch(form.action, {
             method: form.method || "POST",
             body: formData,
-            headers: {
+            headers: withCsrfHeaders({
               Accept: "application/json",
-            },
+            }),
           });
           const data = await response.json().catch(() => ({}));
           if (!response.ok) {
@@ -2379,9 +2392,9 @@ const setupConfirmReplaceForms = (openConfirm) => {
           const response = await fetch(form.action, {
             method: form.method || "POST",
             body: formData,
-            headers: {
+            headers: withCsrfHeaders({
               Accept: "application/json",
-            },
+            }),
           });
           const data = await response.json().catch(() => ({}));
           if (!response.ok) {

@@ -12,6 +12,7 @@ import shutil
 from typing import Any
 
 from flask import Flask, abort, flash, jsonify, redirect, render_template, request, send_file, url_for
+from flask_wtf import CSRFProtect
 from werkzeug.utils import secure_filename
 
 from studyscribe.core import config, db
@@ -29,7 +30,35 @@ app = Flask(
     static_folder=str(BASE_DIR / "web" / "static"),
     template_folder=str(BASE_DIR / "web" / "templates"),
 )
-app.secret_key = os.getenv("FLASK_SECRET", "studyscribe-dev")
+csrf = CSRFProtect()
+
+
+def _is_dev_mode() -> bool:
+    return (
+        os.getenv("STUDYSCRIBE_ENV", "").lower() == "development"
+        or os.getenv("FLASK_ENV", "").lower() == "development"
+        or os.getenv("FLASK_DEBUG") == "1"
+    )
+
+
+def _resolve_flask_secret(*, testing: bool, dev_mode: bool) -> str:
+    secret = os.getenv("FLASK_SECRET")
+    if secret:
+        return secret
+    if testing or dev_mode:
+        return "studyscribe-dev"
+    raise RuntimeError("FLASK_SECRET is required in production. Set FLASK_SECRET.")
+
+
+def _configure_security(*, testing: bool = False, dev_mode: bool | None = None) -> None:
+    resolved_dev_mode = _is_dev_mode() if dev_mode is None else dev_mode
+    app.config["TESTING"] = testing
+    app.config["DEV_MODE"] = resolved_dev_mode
+    app.config["WTF_CSRF_ENABLED"] = not testing
+    app.secret_key = _resolve_flask_secret(testing=testing, dev_mode=resolved_dev_mode)
+    if not getattr(app, "_csrf_inited", False):
+        csrf.init_app(app)
+        app._csrf_inited = True
 
 ALLOWED_AUDIO_EXTENSIONS = {".wav", ".mp3", ".m4a", ".aac", ".flac", ".ogg"}
 ALLOWED_ATTACHMENT_EXTENSIONS = {".pdf", ".ppt", ".pptx", ".doc", ".docx"}
@@ -1321,12 +1350,16 @@ def handle_gemini_error(error: GeminiError):
     return redirect(request.referrer or url_for("home"))
 
 
-def create_app(*, testing: bool = False, data_dir: Path | None = None, db_path: Path | None = None) -> Flask:
+def create_app(
+    *,
+    testing: bool = False,
+    data_dir: Path | None = None,
+    db_path: Path | None = None,
+    dev_mode: bool | None = None,
+) -> Flask:
     if data_dir or db_path:
         config.override_paths(data_dir=data_dir, db_path=db_path)
-    app.config["TESTING"] = testing
+    _configure_security(testing=testing, dev_mode=dev_mode)
     _init()
     return app
 
-
-_init()

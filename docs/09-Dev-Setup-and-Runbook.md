@@ -25,7 +25,7 @@ which ffmpeg
 ```
 
 Environment variables
-- `FLASK_SECRET` — optional but recommended. Referenced in `studyscribe/app.py`: `app.secret_key = os.getenv("FLASK_SECRET", "studyscribe-dev")`.
+- `FLASK_SECRET` — required for production. For local dev you can either set `FLASK_SECRET` directly or set `STUDYSCRIBE_ENV=development` / `FLASK_DEBUG=1` to allow the dev fallback secret.
 - `GEMINI_API_KEY` — required to enable AI features (notes/Q&A). Referenced in `studyscribe/core/config.py`: `Settings.gemini_api_key` and used in `studyscribe/services/gemini.py` `_client()`.
 - `GEMINI_MODEL` — optional override for model name (defaults to `gemini-2.5-flash`) in `studyscribe/core/config.py`.
 - `TRANSCRIBE_CHUNK_SECONDS` — optional override for chunk duration; default in `studyscribe/core/config.py`.
@@ -35,10 +35,10 @@ Starting the app (development)
 # from repo root
 python app.py
 ```
-This runs the development server in `/app.py` which imports `studyscribe.app:app` and calls `app.run(...)`.
+This runs the development server in `/app.py`, which calls `studyscribe.app:create_app()` and then `app.run(...)`.
 
 Database & DATA_DIR
-- DB path: `studyscribe/core/config.py`: `DB_PATH` (default `studyscribe.db` inside package base). `init_db()` is called on import via `_init()` in `studyscribe/app.py`, so launching the app creates schema automatically.
+- DB path: `studyscribe/core/config.py`: `DB_PATH` (default `studyscribe.db` inside package base). `init_db()` is called during app startup via `_init()` in `studyscribe/app.py`, so launching the app creates schema automatically.
 - DATA_DIR: `studyscribe/core/config.py`: `DATA_DIR` — created by `_init()` and used for per-module/session storage.
 
 Seed data
@@ -68,8 +68,8 @@ Common pitfalls & troubleshooting
   - Cause: `GEMINI_API_KEY` not provided; `_client()` in `studyscribe/services/gemini.py` raises this error.
   - Fix: set `GEMINI_API_KEY` in your environment before starting the server.
 - App cookies fail or sessions are insecure:
-  - Cause: `FLASK_SECRET` is defaulted to `studyscribe-dev` if not set (`studyscribe/app.py`).
-  - Fix: set a strong `FLASK_SECRET` environment variable.
+  - Cause: `FLASK_SECRET` missing in production mode.
+  - Fix: set a strong `FLASK_SECRET` environment variable (or set `STUDYSCRIBE_ENV=development` only for local dev).
 - Jobs appear stuck or errors in jobs table:
   - Inspect jobs table with sqlite3:
 ```bash

@@ -7,6 +7,7 @@
 
 {% block content %}
   <form class="stack8" method="post" action="{{ url_for('export_pack', module_id=module.id, session_id=session.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
     <label class="checkboxRow">
       <input type="checkbox" name="include_ai_notes" value="1" checked />
       <span>AI notes</span>
