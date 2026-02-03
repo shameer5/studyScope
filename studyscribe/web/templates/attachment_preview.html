@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block workspace_header %}
+  <h1>Attachment Preview</h1>
+  <div class="muted" style="font-size:12px;">{{ filename }}</div>
+{% endblock %}
+
+{% block content %}
+  <div class="stack16">
+    {% if mime == 'application/pdf' %}
+      <iframe
+        src="{{ open_url }}"
+        style="width:100%; height:70vh; border:1px solid rgba(38,50,74,.45); border-radius:12px;"
+        title="Attachment preview"
+      ></iframe>
+    {% else %}
+      <div class="row rowStatic">
+        <div style="font-weight:650;">Preview not available</div>
+        <div class="muted" style="font-size:12px;">Download the attachment to view it.</div>
+      </div>
+      <a class="btn btnPrimary btnSmall" href="{{ open_url }}">Download {{ filename }}</a>
+    {% endif %}
+  </div>
+{% endblock %}

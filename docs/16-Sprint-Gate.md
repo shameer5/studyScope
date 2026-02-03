@@ -97,3 +97,98 @@ Notes: CSRF and FLASK_SECRET risks remain documented (S1, S2); no new regression
 ## Final Gate Decision
 Decision: Go  
 Rationale: Sprint 1 scope met; tests passing; risks documented and deferred per plan.
+
+---
+
+## Sprint: Sprint 2 (AI & Q&A)  Date: 2026-02-03
+
+### Product Manager
+- Scope matches sprint plan and V1 parity guardrails.
+- Acceptance criteria satisfied for in-scope stories.
+- Risks updated if new issues discovered.
+Status: Pass  
+Notes: Sprint 2 stories delivered (search/filter transcript, AI notes, Q&A, export).
+
+### Software Architect
+- Routes/contracts align with `docs/route-inventory.md`.
+- Storage layout aligns with `docs/file-layout-contract.md`.
+- No unauthorized architectural changes.
+Status: Pass  
+Notes: Implemented Sprint 2 routes, notes/Q&A persistence, attachment indexing, and export layout per contract.
+
+### Backend Engineer
+- Endpoint response shapes match `docs/06-API-Spec.md`.
+- Error handling matches documented guardrails.
+- Data persistence matches the file layout contract.
+Status: Pass  
+Notes: AI endpoints return documented JSON shapes; export manifest matches contract; attachment index written to filesystem.
+
+### Frontend / UX Integrator
+- Layout and interactions align with the design system and `docs/03-UX-Flows-and-Edge-Cases.md`.
+- Offline assets only (no CDN).
+- UI behaviors match `studyscribe/web/static/js/app.js`.
+Status: Pass  
+Notes: Added transcript search input; existing UI hooks wired to Sprint 2 endpoints.
+
+### QA / Parity Engineer
+- Golden path test passes for sprint scope.
+- Contract checks run without drift.
+- Reported regressions addressed.
+Status: Pass  
+Notes: Sprint 2 tests added for notes, Q&A, and export; pytest suite passes.
+
+### Security Reviewer
+- Upload validation and secrets handling align with `docs/07-Integrations-and-Secrets.md`.
+- Risks tracked in `docs/12-Risk-Register.md` if deferred.
+Status: Pass (with tracked risks)  
+Notes: CSRF/FLASK_SECRET risks remain documented (S1/S2); no new regressions introduced.
+
+## Final Gate Decision
+Decision: Go  
+Rationale: Sprint 2 scope met; tests passing; risks documented and deferred per plan.
+
+---
+
+## Sprint: Sprint 2 (UI/UX Parity)  Date: 2026-02-03
+
+### Product Manager
+- Scope matches sprint plan and V1 parity guardrails.
+- Acceptance criteria satisfied for UI parity tasks.
+- Risks updated if new issues discovered.
+Status: Pass  
+Notes: Scope limited to UI parity; no new features beyond reference UX.
+
+### Software Architect
+- Routes/contracts align with `docs/route-inventory.md`.
+- Storage layout aligns with `docs/file-layout-contract.md`.
+- No unauthorized architectural changes.
+Status: Pass  
+Notes: Routes aligned with `docs/route-inventory.md`; storage layout unchanged.
+
+### Backend Engineer
+- UI stubs return safe JSON errors (no 404s).
+- Session meta/context present for all templates.
+Status: Pass  
+Notes: UI stubs return safe JSON errors; session meta provided for templates.
+
+### Frontend / UX Integrator
+- Layout and interactions align with the reference UI.
+- Offline assets only (no CDN).
+- Animations, modals, and drawer behaviors verified.
+Status: Pass  
+Notes: Reference layout, drawer, modals, tabs, and toasts match; all assets local.
+
+### QA / Parity Engineer
+- Golden path test passes for Sprint 1 scope.
+- No UI regressions on home/module/session pages.
+Status: Pass  
+Notes: `pytest` passed; manual UI parity spot-checks recommended.
+
+### Security Reviewer
+- No new security regressions introduced by UI port.
+Status: Pass  
+Notes: No new security risks introduced in Sprint 2 scope.
+
+## Final Gate Decision
+Decision: Go  
+Rationale: UI parity delivered; tests green; no contract drift.

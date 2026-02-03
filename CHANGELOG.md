@@ -10,3 +10,10 @@ All notable changes to StudyScribe are documented here.
 - Added initial pytest coverage for sprint 1 flows.
 - Added sprint gate review template and golden path test coverage.
 - Added transcription progress indicator and aligned backlog acceptance criteria with route inventory.
+
+## Sprint 2 - 2026-02-03
+- Added attachment upload with text extraction index.
+- Implemented AI notes generation, Q&A endpoints, and source preview.
+- Added transcript tagging and personal notes persistence.
+- Implemented export ZIP builder with manifest.
+- Added Sprint 2 tests for AI notes, Q&A, and export flow.

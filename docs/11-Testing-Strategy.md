@@ -111,6 +111,11 @@ Sprint 1 delivers module/session creation, audio upload, and transcription with 
 
 This is a scope-aligned subset until Sprint 2/3 features (AI notes, Q&A, export) are implemented.
 
+### Sprint 2 Contract Coverage
+- AI notes generation: `tests/test_sprint2.py::test_generate_notes_flow`
+- Q&A API contract: `tests/test_sprint2.py::test_api_ai_ask_flow`
+- Export ZIP creation: `tests/test_sprint2.py::test_export_pack`
+
 ### C. Snapshot Tests (Transcript Rendering)
 
 **Transcript Panel HTML** — Render transcript segments consistently:
@@ -202,4 +207,3 @@ pytest tests/ -vv --tb=long
 - **Browser Compatibility**: No multi-browser E2E tests (could add Playwright/Selenium later)
 
 **These are aspirational**; parity-first means starting with contract + golden path validation, then adding specialized tests as needs emerge.
-
