@@ -17,42 +17,46 @@ Risk T1: Transcription runtime dependency failure
 
 Risk T2: Gemini API quota/rate limits exceeded
 - Description: User generates notes/Q&A frequently and hits Gemini API quota or rate limits.
-- Evidence: `studyscribe/services/gemini.py` `generate_notes()` and `answer_question()` call Gemini directly with no retry or rate-limiting logic.
+- Evidence: `studyscribe/services/gemini.py` wraps `generate_content()` with retry/backoff and logs rate-limit/5xx failures.
 - Likelihood: Medium (quota depends on API plan; not visible in code).
 - Impact: High (AI features become unavailable).
 - Mitigation:
-  - Add retry logic with exponential backoff in `_client()` calls.
-  - Log API errors with quota info.
+  - Add retry logic with exponential backoff around Gemini calls.
+  - Log API errors with quota info (status codes and retry attempts).
   - Recommend operators monitor API usage via Gemini dashboard.
+ - Status: Mitigated in Sprint 5 with retry/backoff + logging.
 
 Risk T3: SQLite concurrency/locking
 - Description: Multiple requests write to SQLite simultaneously, causing lock timeouts or data loss.
-- Evidence: `studyscribe/core/db.py` uses SQLite with short-lived connections; no transaction isolation or locking strategy is documented.
+- Evidence: `studyscribe/core/db.py` enables WAL mode and `busy_timeout`, and uses a connection timeout.
 - Likelihood: Low (single-node, local deployment); Medium if multi-instance without shared DB.
 - Impact: Medium (data corruption or request failures).
 - Mitigation:
   - For single-instance: acceptable; SQLite is sufficient.
   - For multi-instance: upgrade to PostgreSQL (see `studyscribe/core/db.py` to abstract DB calls).
   - Add connection pool / write queue if scaling to multiple writers.
+ - Status: Mitigated in Sprint 5 with WAL + busy_timeout defaults.
 
 Risk T4: Disk space exhaustion
 - Description: Large audio files or many transcripts fill up `DATA_DIR` or DB file grows without bounds.
-- Evidence: `studyscribe/core/config.py` `DATA_DIR` and `DB_PATH` are local filesystem; no quota or cleanup is enforced.
+- Evidence: `studyscribe/core/storage.py` checks disk usage and warns at 80% usage; uploads/transcription enforce minimum free space.
 - Likelihood: Medium (depends on usage patterns).
 - Impact: Medium (app stops accepting uploads; old jobs not cleaned from DB).
 - Mitigation:
   - Implement quota enforcement or alerts at 80% disk usage.
   - Add cleanup job to delete old jobs and optionally old session artifacts.
   - Monitor `DATA_DIR` and DB file size periodically.
+ - Status: Partially mitigated in Sprint 5 (disk usage warnings + minimum free space checks).
 
 Risk T5: Job executor thread pool exhaustion
-- Description: `_EXECUTOR` in `studyscribe/services/jobs.py` has 4 workers; if too many long-running transcriptions queue up, new jobs are delayed.
-- Evidence: `studyscribe/services/jobs.py`: `_EXECUTOR = ThreadPoolExecutor(max_workers=4)`.
+- Description: `_EXECUTOR` in `studyscribe/services/jobs.py` defaults to 2 workers; if too many long-running transcriptions queue up, new jobs are delayed.
+- Evidence: `studyscribe/services/jobs.py`: `_EXECUTOR` uses `JOBS_MAX_WORKERS` and queue warnings via `JOBS_QUEUE_WARN`.
 - Likelihood: Low (local single-user); High if many concurrent sessions.
 - Impact: Medium (jobs are delayed, not lost).
 - Mitigation:
   - Monitor queue depth and job wait times.
   - For production: offload to a separate job queue (Celery + Redis, etc.).
+ - Status: Partially mitigated in Sprint 5 with configurable worker count and queue depth warnings.
 
 2) Delivery Risks
 
@@ -74,6 +78,7 @@ Risk D2: Documentation drift
 - Mitigation:
   - Require docs updates in PR reviews when code changes.
   - Link PRs to docs updates in the backlog.
+ - Status: Mitigated in Sprint 5 with doc updates aligned to runtime behavior.
 
 Risk D3: Dependency version conflicts or obsolescence
 - Description: `requirements.txt` may include outdated or conflicting packages; `faster_whisper` or `google.genai` may have breaking changes.
@@ -83,6 +88,7 @@ Risk D3: Dependency version conflicts or obsolescence
 - Mitigation:
   - Use tools like Dependabot or Renovate to auto-update and alert on major version changes.
   - Pin major versions; allow patch updates.
+ - Status: Mitigated in Sprint 5 by adding Dependabot update checks.
 
 3) Security Risks
 
@@ -114,15 +120,17 @@ Risk S3: Unauthenticated endpoints
 - Mitigation:
   - Document single-user, local-only deployment model.
   - If multi-user access is needed, add authentication (e.g., Flask-Login, OAuth2).
+ - Status: Mitigated in Sprint 5 with explicit local-only deployment guidance in ops docs.
 
 Risk S4: Prompt injection attacks
 - Description: User input in questions or personal notes could be crafted to manipulate Gemini model outputs or leak internal prompts.
-- Evidence: `studyscribe/services/gemini.py` `_build_notes_prompt()` interpolates user content into the prompt without sanitization.
+- Evidence: `studyscribe/app.py` wraps transcript/attachments in delimiters and warns the model to ignore untrusted instructions.
 - Likelihood: Medium.
 - Impact: Medium (attacker could manipulate AI output, learn prompt structure).
 - Mitigation:
   - Review and sanitize user inputs before including in prompts.
   - Add input validation and rate-limiting on Q&A endpoints in `studyscribe/app.py`.
+ - Status: Partially mitigated in Sprint 5 with prompt hardening; input validation still pending.
 
 Risk S5: Audio/attachment exposure
 - Description: Stored audio files and attachments in `DATA_DIR` could be accessed by unauthorized users if filesystem permissions are misconfigured.
@@ -133,6 +141,7 @@ Risk S5: Audio/attachment exposure
   - Set restrictive file permissions on `DATA_DIR` (700 for owner only).
   - If using cloud storage, encrypt at rest and in transit.
   - Document data residency and privacy requirements for users.
+ - Status: Mitigated in Sprint 5 by enforcing private directory permissions.
 
 4) Risk prioritization
 

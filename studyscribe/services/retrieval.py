@@ -44,6 +44,7 @@ def build_chunks(segments: Iterable[dict], max_chars: int = 1200, overlap: int =
         buffer.append(segment)
         buffer_chars += len(text)
         if buffer_chars >= max_chars:
+            # Chunk transcript into overlapping windows for lightweight retrieval.
             flush()
 
     flush()
@@ -55,6 +56,7 @@ def retrieve_chunks(query: str, chunks: Iterable[dict], k: int = 8) -> list[dict
     if not tokens:
         return []
     scores = Counter(tokens)
+    # Lightweight term-frequency scoring keeps retrieval offline and dependency-free.
     scored = []
     for chunk in chunks:
         text_tokens = _tokenize(chunk.get("text", ""))

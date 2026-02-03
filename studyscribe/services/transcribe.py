@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Iterable
 
 from studyscribe.core.config import settings
+from studyscribe.core.storage import StorageError, check_disk_space, ensure_private_dir
 from .retrieval import build_chunks
 
 
@@ -22,7 +23,7 @@ class TranscriptionError(RuntimeError):
 
 
 def _ensure_wav(audio_path: Path, work_dir: Path) -> Path:
-    work_dir.mkdir(parents=True, exist_ok=True)
+    ensure_private_dir(work_dir)
     if audio_path.suffix.lower() == ".wav":
         return audio_path
     if not shutil.which("ffmpeg"):
@@ -53,13 +54,14 @@ def _ensure_wav(audio_path: Path, work_dir: Path) -> Path:
 
 
 def _chunk_wav(wav_path: Path, work_dir: Path, chunk_seconds: int) -> list[Path]:
-    work_dir.mkdir(parents=True, exist_ok=True)
+    ensure_private_dir(work_dir)
     chunk_paths: list[Path] = []
     with wave.open(str(wav_path), "rb") as wav_file:
         frame_rate = wav_file.getframerate()
         total_frames = wav_file.getnframes()
         frames_per_chunk = int(frame_rate * chunk_seconds)
         total_chunks = int(math.ceil(total_frames / frames_per_chunk))
+        # Chunk long audio to keep model memory stable and enable progress updates.
         for chunk_index in range(total_chunks):
             chunk_frames = wav_file.readframes(frames_per_chunk)
             if not chunk_frames:
@@ -86,7 +88,7 @@ def _load_model():
 
 
 def _write_transcript_files(transcript_dir: Path, segments: list[dict]) -> Path:
-    transcript_dir.mkdir(parents=True, exist_ok=True)
+    ensure_private_dir(transcript_dir)
     transcript_path = transcript_dir / "transcript.json"
     with transcript_path.open("w", encoding="utf-8") as handle:
         json.dump(segments, handle, indent=2)
@@ -103,6 +105,10 @@ def transcribe_audio(
     *,
     progress_cb=None,
 ) -> str:
+    try:
+        check_disk_space(session_dir)
+    except StorageError as exc:
+        raise TranscriptionError("Insufficient disk space", user_message=exc.user_message) from exc
     transcript_dir = session_dir / "transcript"
     work_dir = session_dir / "work" / "chunks"
     wav_path = _ensure_wav(audio_path, session_dir / "work")
@@ -116,6 +122,7 @@ def transcribe_audio(
     total_chunks = len(chunk_paths)
     for chunk_index, chunk_path in enumerate(chunk_paths):
         if progress_cb:
+            # Progress is chunk-based to provide stable UI updates on long audio.
             progress = int(((chunk_index) / total_chunks) * 100)
             progress_cb(progress, f"Transcribing chunk {chunk_index + 1}/{total_chunks}")
         result_segments, _ = model.transcribe(str(chunk_path))

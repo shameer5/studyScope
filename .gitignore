@@ -2,5 +2,9 @@ __pycache__/
 *.pyc
 *.pyo
 .pytest_cache/
+output/
+tmp/
 studyscribe/data/
 studyscribe/studyscribe.db
+studyscribe/studyscribe.db-wal
+studyscribe/studyscribe.db-shm

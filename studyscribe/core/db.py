@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 import sqlite3
 from contextlib import closing
 from typing import Iterable
 
 from .config import DB_PATH
 
+
+_LOGGER = logging.getLogger(__name__)
 
 SCHEMA: Iterable[str] = (
     """
@@ -83,9 +86,15 @@ SCHEMA: Iterable[str] = (
 
 
 def get_connection() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=5.0)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    try:
+        # Improve SQLite write concurrency for local single-instance use.
+        conn.execute("PRAGMA journal_mode = WAL")
+        conn.execute("PRAGMA busy_timeout = 5000")
+    except sqlite3.OperationalError as exc:
+        _LOGGER.warning("SQLite PRAGMA setup failed: %s", exc)
     return conn
 
 

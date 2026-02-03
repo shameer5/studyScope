@@ -240,3 +240,51 @@ Notes: `FLASK_SECRET` enforced outside dev/test; CSRF tokens via Flask-WTF + JS 
 ## Final Gate Decision
 Decision: Go  
 Rationale: Sprint 4 scope met; CI + Dockerfile added; security hardening complete; tests passing.
+
+---
+## Sprint: Sprint 5 (Stabilization & Polish)  Date: 2026-02-03
+
+### Product Manager
+- Scope matches sprint plan and V1 parity guardrails.
+- Acceptance criteria satisfied for in-scope stories.
+- Risks updated if new issues discovered.
+Status: Pass  
+Notes: Scope limited to stabilization; no new features or contract drift. Risk register updated for T2/T3/T4/T5/S4/S5.
+
+### Software Architect
+- Routes/contracts align with `docs/route-inventory.md`.
+- Storage layout aligns with `docs/file-layout-contract.md`.
+- No unauthorized architectural changes.
+Status: Pass  
+Notes: Route inventory and file layout contract updated to reflect disk-space guardrails and permissions; no new routes added.
+
+### Backend Engineer
+- Endpoint response shapes match `docs/06-API-Spec.md`.
+- Error handling matches documented guardrails.
+- Data persistence matches the file layout contract.
+Status: Pass  
+Notes: API spec updated for JSON responses and 507 storage errors; persistence still under `DATA_DIR` with private permissions on POSIX.
+
+### Frontend / UX Integrator
+- Layout and interactions align with the design system and `docs/03-UX-Flows-and-Edge-Cases.md`.
+- Offline assets only (no CDN).
+- UI behaviors match `studyscribe/web/static/js/app.js`.
+Status: Pass  
+Notes: No UI changes in Sprint 5; offline assets unchanged.
+
+### QA / Parity Engineer
+- Golden path test passes for sprint scope.
+- Contract checks run without drift.
+- Reported regressions addressed.
+Status: Pass  
+Notes: `pytest -q` (7 passed) on 2026-02-03. Performance check with synthetic 101‑minute WAV (silent, 16 kHz mono, 16‑bit): size 184.94 MB; transcription time 69.07s; transcript size 28,630 bytes; segments 272. Environment: macOS 26.2 arm64, Python 3.12.8, faster_whisper 1.0.3. Contract docs reviewed and updated.
+
+### Security Reviewer
+- Upload validation and secrets handling align with `docs/07-Integrations-and-Secrets.md`.
+- Risks tracked in `docs/12-Risk-Register.md` if deferred.
+Status: Pass  
+Notes: Added Gemini retry/backoff logging, prompt hardening, and private data dir permissions; docs updated.
+
+## Final Gate Decision
+Decision: Go  
+Rationale: Stabilization complete with risk mitigations, performance validation, and tests passing; no contract drift.

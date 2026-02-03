@@ -7,7 +7,7 @@ This document lists external integrations used by StudyScribe, their purpose, wh
 - Config location: `studyscribe/core/config.py`: `Settings.gemini_api_key` and `Settings.gemini_model` (`settings.gemini_api_key`, `settings.gemini_model`).
 - Secrets required: `GEMINI_API_KEY` environment variable (see `studyscribe/core/config.py`: `Settings.gemini_api_key`).
 - Failure modes: missing or invalid API key triggers `GeminiError` in `_client()` (see `studyscribe/services/gemini.py`); invalid/ill-formed model responses can cause JSON validation errors in `answer_question()` which raise `GeminiError`.
-- Retries/timeouts: no retry or timeout logic is implemented in the code. `_client()` loads `google.genai` and `generate_content()` is invoked directly (see `studyscribe/services/gemini.py`). Operators should add retries or proxying if required.
+- Retries/timeouts: retry/backoff is implemented around `generate_content()` in `studyscribe/services/gemini.py` with configurable `GEMINI_MAX_RETRIES` and `GEMINI_RETRY_BASE_SECONDS`. Rate-limit (429) and 5xx errors are retried; failures are logged.
 
 2) Local transcription runtime (`faster_whisper`) and `ffmpeg`
 - Purpose: convert audio to text segments and produce transcript chunks. Implemented in `studyscribe/services/transcribe.py`: `transcribe_audio()`, `_ensure_wav()`, `_chunk_wav()`, `_load_model()`.
@@ -24,12 +24,12 @@ This document lists external integrations used by StudyScribe, their purpose, wh
 - Config location: DB file path `DB_PATH` in `studyscribe/core/config.py`.
 - Secrets needed: none.
 - Failure modes: DB file permission issues, disk full, or concurrent write limits — code uses SQLite and opens short-lived connections via `get_connection()` which sets `row_factory` to `sqlite3.Row` (`studyscribe/core/db.py`). For production scaling consider migrating to a client-server DB.
-- Retries/timeouts: no explicit retry logic; writes and schema migrations are executed synchronously at startup in `init_db()`.
+- Retries/timeouts: no explicit retry logic; `get_connection()` enables `busy_timeout` and WAL mode for improved concurrency.
 
 4) Local filesystem (`DATA_DIR`)
 - Purpose: store per-module and per-session artifacts (audio, transcript, notes, attachments). `DATA_DIR` is defined in `studyscribe/core/config.py` and used by helpers `_module_dir()` and `_session_dir()` in `studyscribe/app.py`.
 - Secrets needed: none.
-- Failure modes: disk full, permission errors; operations use `Path` and naive filesystem calls (no transaction/atomic rename semantics documented).
+- Failure modes: disk full, permission errors; `studyscribe/core/storage.py` enforces private directories and checks disk usage before writes, logging when usage exceeds `DATA_DIR_WARN_PERCENT`.
 
 5) Other libraries & system deps
 - `google.genai` (Gemini SDK) — imported in `studyscribe/services/gemini.py` via `_client()` and required when `GEMINI_API_KEY` is present.
@@ -39,12 +39,16 @@ This document lists external integrations used by StudyScribe, their purpose, wh
 6) Secrets inventory (env vars and where referenced)
 - `GEMINI_API_KEY` — referenced in `studyscribe/core/config.py` as `Settings.gemini_api_key` and used by `studyscribe/services/gemini.py` `_client()`.
 - `GEMINI_MODEL` — referenced in `studyscribe/core/config.py` as `Settings.gemini_model` (optional, default `gemini-2.5-flash`).
+- `GEMINI_MAX_RETRIES` — referenced in `studyscribe/services/gemini.py` to control retry attempts.
+- `GEMINI_RETRY_BASE_SECONDS` — referenced in `studyscribe/services/gemini.py` for retry backoff timing.
 - `TRANSCRIBE_CHUNK_SECONDS` — referenced in `studyscribe/core/config.py` as `Settings.chunk_seconds` (affects `_chunk_wav()` behavior).
 - `FLASK_SECRET` — referenced in `studyscribe/app.py` and required for production; the app raises on startup if it is missing when not in dev/test mode. For local development, set `STUDYSCRIBE_ENV=development` or `FLASK_DEBUG=1` to allow the dev fallback secret.
+- `DATA_DIR_WARN_PERCENT` / `DATA_DIR_MIN_FREE_PERCENT` / `DATA_DIR_MIN_FREE_MB` — referenced in `studyscribe/core/storage.py` to warn/block on low disk space.
+- `JOBS_MAX_WORKERS` / `JOBS_QUEUE_WARN` — referenced in `studyscribe/services/jobs.py` to tune worker counts and queue warnings.
 
 7) Failure handling summary & recommendations
 - Current code surfaces failures via `GeminiError` and `TranscriptionError` which include `user_message` intended for UI display (`studyscribe/services/gemini.py`, `studyscribe/services/transcribe.py`). Background jobs catch exceptions and set job `status='error'` with a safe `message` via `enqueue_job()` in `studyscribe/services/jobs.py`.
-- Retries/timeouts: none implemented for external calls — recommend adding retry wrappers around Gemini calls and `ffmpeg` conversion, and timeouts when calling model SDKs.
+- Retries/timeouts: Gemini calls are retried with backoff; `ffmpeg` conversion still runs without retries. Consider adding timeouts around model SDK calls if needed.
 
 8) CSRF protection
 - Flask-WTF `CSRFProtect` is enabled; templates include `csrf_token()` inputs and JS adds the `X-CSRFToken` header for JSON/form submissions.
@@ -69,8 +73,8 @@ StudyScribe integrates Google's GenAI SDK to satisfy LLM usage requirements:
   - Runtime check in `_client()` raises `GeminiError` if missing or invalid
 
 - ✅ **Prompt Guidance**: All LLM operations send structured prompts with explicit role/purpose:
-  - `generate_notes()` — passes transcript + attachments with explicit summary instruction (see [studyscribe/services/gemini.py](studyscribe/services/gemini.py#L45-L65))
-  - `answer_question()` — passes user question + session context (transcript, notes, attachment excerpts) as structured multi-part prompt (see [studyscribe/services/gemini.py](studyscribe/services/gemini.py#L78-L110))
+  - `generate_notes()` — passes transcript + attachments with explicit summary instruction (see [studyscribe/app.py](studyscribe/app.py))
+  - `answer_question()` — passes user question + session context (transcript, notes, attachment excerpts) as structured multi-part prompt (see [studyscribe/app.py](studyscribe/app.py))
 
 **Setup Checklist**
 1. Obtain Google GenAI API key from Google Cloud console (gen-ai setup required; see https://ai.google.dev/)

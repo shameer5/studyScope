@@ -1,6 +1,17 @@
 # StudyScribe (StudyScope)
 
-Local-first study session workspace. Sprint 1 delivers module/session management, audio upload, and transcription with background job polling.
+Local-first study session workspace.
+
+**Problem & Intended Users**
+- Problem solved: capture and organize study sessions with searchable transcripts, notes, and exports without relying on always-on cloud services.
+- Intended users: single-user, local-first students and educators who want private, offline-friendly study workflows.
+- Business/organizational relevance: improves knowledge capture, training retention, and documentation workflows for education teams or small organizations.
+
+**Key Functions**
+- Create modules and sessions to organize coursework.
+- Upload audio, transcribe sessions, and review timestamped transcripts.
+- Generate AI notes and run Q&A over transcripts and attachments.
+- Export session packs as ZIP archives for sharing or backup.
 
 ## Sprint 1 scope
 - Create modules and sessions.
@@ -24,6 +35,11 @@ Local-first study session workspace. Sprint 1 delivers module/session management
 - CI workflow for pytest and Docker build verification.
 - Security hardening: enforced `FLASK_SECRET` in production and CSRF protection.
 
+## Sprint 5 scope
+- Stabilization and polish only (no new features or route/contract changes).
+- Reliability hardening: retries/backoff, disk-space guardrails, and job queue tuning.
+- Performance validation (100+ minute transcription) documented in sprint gate.
+
 ## Setup
 1. Install Python dependencies:
    ```bash
@@ -38,6 +54,7 @@ python app.py
 ```
 
 Open http://127.0.0.1:5000/home.
+Local-first only: keep the server bound to localhost or place it behind a trusted proxy if exposing it.
 
 ## Important (runtime secrets)
 - `FLASK_SECRET` is required in production. For local development, either set `FLASK_SECRET` or set `STUDYSCRIBE_ENV=development` (or `FLASK_DEBUG=1`) to allow the dev fallback secret.
@@ -50,11 +67,28 @@ Open http://127.0.0.1:5000/home.
 - `TRANSCRIBE_CHUNK_SECONDS`: Chunk size for transcription (default `600` seconds).
 - `GEMINI_API_KEY`: Required for AI features (Sprint 2+).
 - `GEMINI_MODEL`: Optional override for the Gemini model.
+- `GEMINI_MAX_RETRIES`: Retry attempts for Gemini calls (default `3`).
+- `GEMINI_RETRY_BASE_SECONDS`: Base backoff seconds for Gemini retries (default `1.0`).
+- `JOBS_MAX_WORKERS`: Background worker count (default `2`).
+- `JOBS_QUEUE_WARN`: Warn when background queue depth exceeds this value (default disabled).
+- `DATA_DIR_WARN_PERCENT`: Warn when disk usage exceeds this percent (default `80`).
+- `DATA_DIR_MIN_FREE_PERCENT`: Block writes if free space drops below this percent (default `5`).
+- `DATA_DIR_MIN_FREE_MB`: Block writes if free space drops below this MB (default `0`).
+
+**AI Tools Used**
+- Google Gemini (`google-genai`) for AI notes generation and Q&A responses (default model: `gemini-2.5-flash`).
+- faster-whisper for on-device transcription of audio into timestamped text.
+
+**AI Usage & Verification**
+- AI tools were used to draft and review code, documentation, and test plans.
+- All AI-generated output was reviewed and edited; final decisions and changes were verified by the developer.
 
 ## Tests
 ```bash
 pytest -q
 ```
+
+Dev/test dependencies live in `requirements-dev.txt`.
 
 ## Docker
 ```bash
@@ -66,3 +100,6 @@ docker run --rm -p 5000:5000 -e FLASK_SECRET="change-me" studyscribe
 - Transcription requires the `faster-whisper` Python package and `ffmpeg` installed.
 - Attachment text extraction uses `pdfplumber`, `python-docx`, and `python-pptx` when available.
 - All assets are local; no CDN dependencies.
+
+**GitHub Repository**
+- Optional: add the repository URL here to show version history and commits.

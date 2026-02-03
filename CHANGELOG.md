@@ -26,3 +26,11 @@ All notable changes to StudyScribe are documented here.
 - Added Dockerfile with Python 3.12, ffmpeg, and pinned dependencies.
 - Added GitHub Actions CI to run pytest, build Docker, and verify container deps.
 - Enforced `FLASK_SECRET` for production and added Flask-WTF CSRF protection.
+
+## Sprint 5 - 2026-02-03
+- Added Gemini retry/backoff with configurable limits and logging.
+- Added disk usage warnings and minimum free-space checks for uploads/transcription.
+- Enabled SQLite WAL + busy_timeout for improved concurrency.
+- Made job worker counts configurable and added queue depth warnings.
+- Hardened AI prompts against prompt-injection patterns.
+- Enforced private permissions on data directories.

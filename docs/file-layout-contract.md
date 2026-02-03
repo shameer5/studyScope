@@ -93,6 +93,7 @@ CREATE TABLE ai_message_sources (
 ### Filesystem Storage
 
 **Base Directory**: `DATA_DIR = studyscribe/data/` (via [studyscribe/core/config.py](studyscribe/core/config.py#L14))
+**Permissions**: `DATA_DIR` and session subfolders are created with owner-only permissions (mode 700) on POSIX systems (see [studyscribe/core/storage.py](studyscribe/core/storage.py)).
 
 **What Lives on Disk**:
 - Audio files (uploads)
@@ -142,7 +143,6 @@ DATA_DIR (studyscribe/data/)
         │       ├── transcript/
         │       │   ├── transcript.json        (segments with start/end/text)
         │       │   ├── transcript.txt         (human-readable)
-        │       │   ├── transcript.srt         (SubRip format, if available)
         │       │   └── chunks.json            (retrieval chunks for Q&A)
         │       ├── work/                      (temporary, may be cleaned up)
         │       │   ├── chunks/
