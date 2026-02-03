@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 import json
+import logging
+import os
+import random
+import time
 from typing import Any
 
 from pydantic import BaseModel, ValidationError
@@ -27,6 +31,80 @@ class AnswerOutput(BaseModel):
     answer_markdown: str
     sources: list[dict] = []
 
+
+_LOGGER = logging.getLogger(__name__)
+_RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+
+
+def _retry_settings() -> tuple[int, float]:
+    raw_attempts = os.getenv("GEMINI_MAX_RETRIES", "3")
+    raw_base = os.getenv("GEMINI_RETRY_BASE_SECONDS", "1.0")
+    try:
+        attempts = int(raw_attempts)
+    except ValueError:
+        _LOGGER.warning("Invalid GEMINI_MAX_RETRIES=%r; using 3", raw_attempts)
+        attempts = 3
+    try:
+        base_delay = float(raw_base)
+    except ValueError:
+        _LOGGER.warning("Invalid GEMINI_RETRY_BASE_SECONDS=%r; using 1.0", raw_base)
+        base_delay = 1.0
+    return max(1, attempts), max(0.1, base_delay)
+
+
+def _extract_status(exc: Exception) -> int | None:
+    for attr in ("status_code", "code", "status", "http_status"):
+        value = getattr(exc, attr, None)
+        if isinstance(value, int):
+            return value
+        if isinstance(value, str) and value.isdigit():
+            return int(value)
+    return None
+
+
+def _is_retryable(exc: Exception) -> bool:
+    status = _extract_status(exc)
+    if status in _RETRYABLE_STATUS:
+        return True
+    message = str(exc).lower()
+    if "rate" in message or "quota" in message or "429" in message:
+        return True
+    return False
+
+
+def _generate_content(prompt: str) -> str:
+    client = _client()
+    max_attempts, base_delay = _retry_settings()
+    for attempt in range(1, max_attempts + 1):
+        try:
+            response = client.models.generate_content(
+                model=settings.gemini_model,
+                contents=prompt,
+            )
+            return response.text or ""
+        except Exception as exc:  # noqa: BLE001
+            retryable = _is_retryable(exc)
+            status = _extract_status(exc)
+            if retryable and attempt < max_attempts:
+                # Exponential backoff with jitter to reduce thundering herds on 429/5xx.
+                delay = base_delay * (2 ** (attempt - 1)) + random.uniform(0, base_delay)
+                _LOGGER.warning(
+                    "Gemini API error (status=%s, attempt %s/%s). Retrying in %.1fs: %s",
+                    status,
+                    attempt,
+                    max_attempts,
+                    delay,
+                    exc,
+                )
+                time.sleep(delay)
+                continue
+            _LOGGER.warning("Gemini API request failed (status=%s): %s", status, exc)
+            if status == 429:
+                user_message = "AI request was rate-limited. Please retry in a moment."
+            else:
+                user_message = "AI request failed. Please try again."
+            raise GeminiError("Gemini API request failed.", user_message=user_message) from exc
+    raise GeminiError("Gemini API request failed.", user_message="AI request failed. Please try again.")
 
 def _client():
     if not settings.gemini_api_key:
@@ -57,12 +135,7 @@ def _extract_json(text: str) -> dict[str, Any]:
 
 
 def generate_notes(prompt: str) -> NotesOutput:
-    client = _client()
-    response = client.models.generate_content(
-        model=settings.gemini_model,
-        contents=prompt,
-    )
-    data = _extract_json(response.text or "")
+    data = _extract_json(_generate_content(prompt))
     try:
         return NotesOutput(**data)
     except ValidationError as exc:
@@ -70,12 +143,7 @@ def generate_notes(prompt: str) -> NotesOutput:
 
 
 def answer_question(prompt: str, sources: list[dict]) -> AnswerOutput:
-    client = _client()
-    response = client.models.generate_content(
-        model=settings.gemini_model,
-        contents=prompt,
-    )
-    data = _extract_json(response.text or "")
+    data = _extract_json(_generate_content(prompt))
     try:
         answer = AnswerOutput(**data)
     except ValidationError as exc:

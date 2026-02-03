@@ -134,6 +134,7 @@ def build_session_export(
             manifest_path.write_text(json.dumps(manifest_payload, indent=2), encoding="utf-8")
             _write_zip_file(zip_file, manifest_path, f"{root}/prompt_manifest.json", files)
 
+        # Manifest captures export metadata and the final file list for reproducibility.
         manifest = {
             "module": {"id": module.get("id"), "name": module.get("name")},
             "session": {"id": session.get("id"), "name": session.get("name")},

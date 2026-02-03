@@ -12,6 +12,7 @@ Install & virtualenv (macOS example)
 python3.12 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 Reference: `requirements.txt` (root) for Python deps.
 
@@ -29,6 +30,10 @@ Environment variables
 - `GEMINI_API_KEY` — required to enable AI features (notes/Q&A). Referenced in `studyscribe/core/config.py`: `Settings.gemini_api_key` and used in `studyscribe/services/gemini.py` `_client()`.
 - `GEMINI_MODEL` — optional override for model name (defaults to `gemini-2.5-flash`) in `studyscribe/core/config.py`.
 - `TRANSCRIBE_CHUNK_SECONDS` — optional override for chunk duration; default in `studyscribe/core/config.py`.
+Optional tuning
+- `GEMINI_MAX_RETRIES` / `GEMINI_RETRY_BASE_SECONDS` — retry attempts and base backoff for Gemini calls.
+- `JOBS_MAX_WORKERS` / `JOBS_QUEUE_WARN` — background worker count and queue warning threshold.
+- `DATA_DIR_WARN_PERCENT` / `DATA_DIR_MIN_FREE_PERCENT` / `DATA_DIR_MIN_FREE_MB` — disk usage warnings and minimum free-space checks.
 
 Starting the app (development)
 ```bash
@@ -55,7 +60,7 @@ Running tests
 ```bash
 pytest -q
 ```
-Tests live in `tests/` (e.g., `tests/test_gemini_schema.py` references `studyscribe/services/gemini.py`).
+Tests live in `tests/` (e.g., `tests/test_app.py`, `tests/test_golden_path.py`, `tests/test_sprint2.py`).
 
 Common pitfalls & troubleshooting
 - Transcription fails with "ffmpeg not available":

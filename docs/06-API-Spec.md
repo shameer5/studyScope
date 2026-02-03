@@ -16,17 +16,17 @@ This spec lists HTTP endpoints and the shapes of requests/responses to the best 
 
 - `GET /sessions/<session_id>` — view session. Handler: `view_session(session_id)` in `studyscribe/app.py`. Response: HTML rendering session workspace (`session.html`).
 
-- `POST /modules/<module_id>/sessions/<session_id>/upload-audio` — upload audio. Handler: `upload_audio(module_id, session_id)` in `studyscribe/app.py`. Request: multipart `audio` file; optional `replace=1`. Validated against `ALLOWED_AUDIO_EXTENSIONS` in `studyscribe/app.py`. On success, `save_audio()` stores file under `session_dir/audio/`.
+- `POST /modules/<module_id>/sessions/<session_id>/upload-audio` — upload audio. Handler: `upload_audio(module_id, session_id)` in `studyscribe/app.py`. Request: multipart `audio` file; optional `replace=1`. Validated against `ALLOWED_AUDIO_EXTENSIONS` in `studyscribe/app.py`. On success, `save_audio()` stores file under `session_dir/audio/`. Returns JSON when `Accept: application/json`; returns 507 if disk space is insufficient.
 
-- `POST /modules/<module_id>/sessions/<session_id>/upload-attachment` — upload attachment. Handler: `upload_attachment(module_id, session_id)` in `studyscribe/app.py`. Request: multipart file(s) `attachment` (multiple). Validated against `ALLOWED_ATTACHMENT_EXTENSIONS` and MIME types (`ALLOWED_ATTACHMENT_MIME_TYPES`). On upload, server attempts text extraction via `_extract_pdf_text()` and writes `attachments/extracted.txt`.
+- `POST /modules/<module_id>/sessions/<session_id>/upload-attachment` — upload attachment. Handler: `upload_attachment(module_id, session_id)` in `studyscribe/app.py`. Request: multipart file(s) `attachment` (multiple). Validated against `ALLOWED_ATTACHMENT_EXTENSIONS` and MIME types (`ALLOWED_ATTACHMENT_MIME_TYPES`). On upload, server attempts text extraction via `_extract_pdf_text()` and writes `attachments/extracted.txt`. Returns JSON when `Accept: application/json`; returns 507 if disk space is insufficient.
 
 - `POST /modules/<module_id>/sessions/<session_id>/transcribe` — start transcription. Handler: `start_transcription(module_id, session_id)` in `studyscribe/app.py`. Response: job id (job row created via `create_job()` in `studyscribe/services/jobs.py`). Background execution via `enqueue_job()` runs `transcribe_audio()` which writes `transcript/transcript.json`.
 
-- `POST /modules/<module_id>/sessions/<session_id>/notes` — start AI notes generation. Handler: `start_notes(module_id, session_id)` in `studyscribe/app.py`. Request: form/button trigger. Response: job id or blocking generation depending on implementation; server calls `generate_notes()` in `studyscribe/services/gemini.py` which returns `NotesOutput`.
+- `POST /modules/<module_id>/sessions/<session_id>/generate-notes` — start AI notes generation. Handler: `start_notes(module_id, session_id)` in `studyscribe/app.py`. Request: form/button trigger. Response: job id or blocking generation depending on implementation; server calls `generate_notes()` in `studyscribe/services/gemini.py` which returns `NotesOutput`.
 
 - `POST /modules/<module_id>/sessions/<session_id>/export` — export pack. Handler: `export_pack(module_id, session_id)` in `studyscribe/app.py`. Request: form values `include_ai_notes`, `include_personal_notes`, `include_transcript`, `include_audio`, `include_attachments` (checkboxes). Response: ZIP file path / streamed ZIP produced by `build_session_export()` in `studyscribe/services/export.py`.
 
-- `POST /modules/<module_id>/sessions/<session_id>/ask` — ask question from UI. Handler: `ask_question(module_id, session_id)` in `studyscribe/app.py`. The UI posts `question` and `scope` (session|module). Server persists chat messages via `_store_ai_message()` and calls `answer_question()` in `studyscribe/services/gemini.py` which returns `AnswerOutput` with fields `answer` (string) and `citations` (list of strings).
+- `POST /modules/<module_id>/sessions/<session_id>/qa` — ask question from UI. Handler: `ask_question(module_id, session_id)` in `studyscribe/app.py`. The UI posts `question` and `scope` (session|module). Server persists chat messages via `_store_ai_message()` and calls `answer_question()` in `studyscribe/services/gemini.py` which returns `AnswerOutput` with fields `answer` (string), `answer_markdown` (string), and `sources` (list of dicts).
 
 - `POST /api/ai/ask` — API endpoint used by the client (see `session.html` data-qa-url). Handler: `api_ai_ask()` in `studyscribe/app.py`. Accepts JSON payload: `question`, `scope`, `session_id` / `module_id` (best-effort). Returns JSON matching `AnswerOutput` schema: see `studyscribe/services/gemini.py`: `AnswerOutput` pydantic model.
 
@@ -36,11 +36,12 @@ This spec lists HTTP endpoints and the shapes of requests/responses to the best 
 - Start transcription: returns job id in UI (job row `id` string) and job status read from `jobs` table (`studyscribe/services/jobs.py`: `create_job()` / `get_job()`). Job record fields: `id`, `status`, `progress`, `message`, `result_path`, `created_at`, `updated_at`.
 - AI answers (`api_ai_ask()` and `answer_question()`): JSON matching `AnswerOutput` model in `studyscribe/services/gemini.py`:
   - `answer`: string
-  - `citations`: list[string]
+  - `answer_markdown`: string
+  - `sources`: list[dict]
 
 4) Error conventions
 - Model runtime and API errors are surfaced as `GeminiError` / `TranscriptionError` with `user_message` attribute intended for UI display (`studyscribe/services/gemini.py` and `studyscribe/services/transcribe.py`).
-- Upload validation uses `_reject_upload()` in `studyscribe/app.py` which flashes an error and responds with a 400 redirect.
+- Upload validation flashes an error and responds with a 400 redirect (or JSON when `Accept: application/json` is present). Storage failures return 507.
 - Background job failures update the job row to `status='error'` and set `message` to a safe user message (see `studyscribe/services/jobs.py` exception handling in `enqueue_job()`).
 
 5) Auth & Rate limits

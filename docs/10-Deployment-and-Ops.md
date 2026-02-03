@@ -16,7 +16,8 @@ This document describes deployment models, CI/CD, hosting options, configuration
   - For persistence, mount volumes to those paths (or override via `config.override_paths()` in a custom entrypoint).
   - Note: system dependency `ffmpeg` is required by `studyscribe/services/transcribe.py`: `_ensure_wav()`.
 
-- Background workers: transcription and notes generation run in a `ThreadPoolExecutor` (see `studyscribe/services/jobs.py`: `_EXECUTOR` with `max_workers=4`). For production, extract jobs to a separate worker process/service and use a message queue (e.g., Celery + Redis).
+- Background workers: transcription and notes generation run in a `ThreadPoolExecutor` (see `studyscribe/services/jobs.py`: `_EXECUTOR`). Defaults to 2 workers; override with `JOBS_MAX_WORKERS`. For production, extract jobs to a separate worker process/service and use a message queue (e.g., Celery + Redis).
+- Security note: the app is designed for single-user, local-first deployments. Bind to `127.0.0.1` or place it behind a trusted reverse proxy/VPN if exposing it on a network.
 
 3) Configuration management
 - Environment variables (see `studyscribe/core/config.py`):
@@ -24,25 +25,35 @@ This document describes deployment models, CI/CD, hosting options, configuration
   - `GEMINI_MODEL` — Gemini model choice (optional, defaults to `gemini-2.5-flash`).
   - `TRANSCRIBE_CHUNK_SECONDS` — transcription chunk duration (optional, default 600).
   - `FLASK_SECRET` — session secret (required in production; app raises if missing outside dev/test mode).
+  - `GEMINI_MAX_RETRIES` — Gemini retry attempts (default 3).
+  - `GEMINI_RETRY_BASE_SECONDS` — base backoff seconds for Gemini retries (default 1.0).
+  - `JOBS_MAX_WORKERS` — background worker count (default 2).
+  - `JOBS_QUEUE_WARN` — warn when executor queue length exceeds this value (default disabled).
+  - `DATA_DIR_WARN_PERCENT` — warn when disk usage exceeds this percent (default 80).
+  - `DATA_DIR_MIN_FREE_PERCENT` — block writes if free space falls below this percent (default 5).
+  - `DATA_DIR_MIN_FREE_MB` — block writes if free space falls below this MB (default 0).
 
 - File paths (hardcoded in `studyscribe/core/config.py`):
   - `DB_PATH` — SQLite file location (default inside package base).
   - `DATA_DIR` — per-module/session artifact storage (default inside package base).
+  - `DATA_DIR` and session subfolders are created with owner-only permissions on POSIX systems (mode 700).
   
 - For production: mount external volumes or set environment variables pointing to shared storage (`DATA_DIR`) and a persistent DB location (`DB_PATH`).
 
 4) Database schema & upgrades
 - Schema is defined in `studyscribe/core/db.py`: `SCHEMA` and initialized via `init_db()` (called on app startup in `studyscribe/app.py`: `_init()`).
-- Simple migrations: `_ensure_column()` in `studyscribe/core/db.py` adds missing columns (example: `source_json` in `ai_message_sources`).
+- SQLite tuning: `journal_mode=WAL` and `busy_timeout` are enabled in `studyscribe/core/db.py` for improved concurrency.
+- Simple migrations: no automated migrations are included; perform manual ALTER TABLE statements as needed.
 - For major migrations: stop the app, perform manual ALTER TABLE statements, then restart.
 
 5) Monitoring & logging
 - Job state: stored in `jobs` table (`studyscribe/core/db.py`: `SCHEMA`) and queryable via `get_job()` in `studyscribe/services/jobs.py`. Client polls job state.
-- Application logging: Python `logging` module is used in `studyscribe/services/jobs.py` (logger `_LOGGER`). No centralized log aggregation is configured.
+- Application logging: Python `logging` module is used in `studyscribe/services/jobs.py` and `studyscribe/services/gemini.py`. No centralized log aggregation is configured.
 - Recommended monitoring:
   - Job failure rates: query `jobs` table for `status='error'`.
-  - Background worker health: monitor `_EXECUTOR` queue depth and worker utilization (not instrumented in code).
-  - Gemini API quota: log API calls and responses in `studyscribe/services/gemini.py`: `_client()` and `generate_notes()`.
+  - Background worker health: set `JOBS_QUEUE_WARN` to log queue depth warnings.
+  - Gemini API quota: logs include retry attempts and rate-limit status codes.
+  - Disk usage: `DATA_DIR_WARN_PERCENT` logs once when usage exceeds threshold.
 
 6) Rollback strategy
 - Stateless app: Flask server is stateless; no in-memory state. Rollback is a container restart or redeployment.
@@ -72,9 +83,9 @@ This document describes deployment models, CI/CD, hosting options, configuration
 9) Scaling considerations
 - ASSUMPTION: single-node, local-first deployment is the current design. See `studyscribe/core/config.py` and `studyscribe/app.py`.
 - Limitations:
-  - SQLite is not concurrent (single writer); upgrade to PostgreSQL for multiple app instances.
+  - SQLite is limited to a single writer; WAL and busy_timeout help but do not replace PostgreSQL for multi-instance deployments.
   - Local `DATA_DIR` must be replaced with shared storage (S3, NFS) for multi-instance deployments.
-  - `ThreadPoolExecutor` with 4 workers is in-process; offload to a job queue (e.g., Celery) and worker pool for production.
+  - `ThreadPoolExecutor` is in-process; offload to a job queue (e.g., Celery) and worker pool for production.
 
 10) ASSUMPTION Summary
 - Operators will provision environment variables (`GEMINI_API_KEY`, `FLASK_SECRET`) at runtime.

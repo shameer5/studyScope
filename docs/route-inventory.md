@@ -252,7 +252,10 @@ DELETE /sessions/c26ed045-9b3b-47a7-b430-d3e2b5476d52
 - **Request Body** (multipart/form-data):
   - `audio` (required): File upload (MP3, WAV, M4A, etc.; see `ALLOWED_AUDIO_EXTENSIONS`)
   - `replace` (optional): "1" to replace existing audio (clears transcript)
-- **Response**: HTTP 302 redirect to `/sessions/<session_id>`
+- **Response**:
+  - HTML: HTTP 302 redirect to `/sessions/<session_id>`
+  - JSON: `{"ok": true, "filename": "..."}` when `Accept: application/json`
+  - Errors: 400 on validation failures; 507 if disk space is insufficient
 - **Side Effects**:
   - Saves audio file to `DATA_DIR/modules/<module_id>/sessions/<session_id>/audio/`
   - If `replace=1` and existing audio exists: deletes old audio and clears transcript
@@ -277,7 +280,10 @@ Flash: "Audio saved to lecture.mp3."
 - **Method**: POST  
 - **Request Body** (multipart/form-data):
   - `attachment` (required, multiple): File uploads; see `ALLOWED_ATTACHMENT_EXTENSIONS` and `ALLOWED_ATTACHMENT_MIME_TYPES`
-- **Response**: HTTP 302 redirect to `/sessions/<session_id>`
+- **Response**:
+  - HTML: HTTP 302 redirect to `/sessions/<session_id>`
+  - JSON: `{"ok": true}` when `Accept: application/json`
+  - Errors: 400 on validation failures; 507 if disk space is insufficient
 - **Side Effects**:
   - Saves files to `DATA_DIR/modules/<module_id>/sessions/<session_id>/attachments/`
   - Rebuilds attachment text index via `_rebuild_attachment_index()` (extracts text from PDFs, PPTXs, DOCXs)
@@ -929,7 +935,7 @@ Content-Disposition: attachment; filename="StudyScribe_Organic_Lecture1_20240115
 
 ### Error Responses
 - **Form Routes**: HTTP 302 + flash message (shown on next page load)
-- **API Routes**: HTTP 400/404/500 with JSON body:
+- **API Routes**: HTTP 400/404/500/507 with JSON body:
   ```json
   { "error": "Human-readable error message" }
   ```
@@ -960,8 +966,8 @@ Content-Disposition: attachment; filename="StudyScribe_Organic_Lecture1_20240115
 | GET | `/sessions/<id>` | `view_session()` | Session detail | HTML (session.html) |
 | PATCH | `/sessions/<id>` | `update_session()` | Rename session | JSON {id, name} |
 | DELETE | `/sessions/<id>` | `delete_session()` | Delete session | JSON {redirect} |
-| POST | `/modules/<mid>/sessions/<sid>/upload-audio` | `upload_audio()` | Upload audio | 302 → /sessions/<sid> |
-| POST | `/modules/<mid>/sessions/<sid>/upload-attachment` | `upload_attachment()` | Upload attachment | 302 → /sessions/<sid> |
+| POST | `/modules/<mid>/sessions/<sid>/upload-audio` | `upload_audio()` | Upload audio | 302 → /sessions/<sid>, or JSON; 400/507 on error |
+| POST | `/modules/<mid>/sessions/<sid>/upload-attachment` | `upload_attachment()` | Upload attachment | 302 → /sessions/<sid>, or JSON; 400/507 on error |
 | POST | `/modules/<mid>/sessions/<sid>/delete-audio` | `delete_audio()` | Delete audio | JSON {ok} or 302 |
 | POST | `/modules/<mid>/sessions/<sid>/delete-attachment` | `delete_attachment()` | Delete attachment | JSON {ok} or 302 |
 | GET | `/modules/<mid>/sessions/<sid>/attachments/<fn>` | `open_attachment()` | Serve attachment | File bytes |
