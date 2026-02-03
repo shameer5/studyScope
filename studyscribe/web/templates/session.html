@@ -4,6 +4,7 @@
 <div class="panelHeader">
   <h2>Sessions</h2>
   <form method="post" action="{{ url_for('create_session', module_id=module.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
     <input type="hidden" name="name" value="Untitled" />
     <button class="btn btnSmall" type="submit">+ New Session</button>
   </form>
@@ -82,6 +83,7 @@
             enctype="multipart/form-data"
             data-confirm-replace
           >
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
             <input type="hidden" name="replace" value="1" />
             <div class="filePicker">
               <input
@@ -102,6 +104,7 @@
           </form>
         {% else %}
           <form class="stack8" method="post" action="{{ url_for('upload_audio', module_id=module.id, session_id=session.id) }}" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
             <div class="filePicker">
               <input
                 class="fileInputHidden"
@@ -137,6 +140,7 @@
                     data-confirm-type="audio"
                     data-confirm-name="{{ audio.name }}"
                   >
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                     <input type="hidden" name="filename" value="{{ audio.name }}" />
                     <button class="btn btnGhost btnSmall" type="submit">Delete</button>
                   </form>
@@ -151,6 +155,7 @@
       <div class="stack8">
         <div style="font-weight:650;">Attachments</div>
         <form class="stack8" method="post" action="{{ url_for('upload_attachment', module_id=module.id, session_id=session.id) }}" enctype="multipart/form-data">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
           <div class="filePicker">
             <input
               class="fileInputHidden"
@@ -188,6 +193,7 @@
                     data-confirm-type="attachment"
                     data-confirm-name="{{ attachment.name }}"
                   >
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                     <input type="hidden" name="filename" value="{{ attachment.name }}" />
                     <button class="btn btnGhost btnSmall" type="submit">Delete</button>
                   </form>
@@ -205,6 +211,7 @@
       <div class="stack8">
         <div style="font-weight:650;">Transcription</div>
         <form method="post" action="{{ url_for('start_transcription', module_id=module.id, session_id=session.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
           <button class="btn" type="submit">Run Transcription</button>
         </form>
         <div
@@ -229,6 +236,7 @@
     </div>
 
     <form class="stack16" method="post" action="{{ url_for('save_annotations', module_id=module.id, session_id=session.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <div x-show="tab === 'notes'" class="stack16">
         <div class="stack8" style="position: relative;" data-notes-container>
           <div style="font-weight:650;">Personal notes</div>
@@ -282,6 +290,7 @@
         data-generate-form
         data-notes-url="{{ url_for('fetch_ai_notes', module_id=module.id, session_id=session.id) }}"
       >
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
         <button
           class="btn btnPrimary"
           type="submit"
@@ -355,6 +364,7 @@
     data-qa-url="{{ url_for('api_ai_ask') }}"
     data-qa-messages-url="{{ url_for('api_ai_messages', session_id=session.id) }}"
   >
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
     <input
       class="input"
       type="text"
@@ -391,6 +401,7 @@
     action="{{ url_for('export_pack', module_id=module.id, session_id=session.id) }}"
     data-export-form
   >
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
     <div class="exportOptions">
       <label class="checkboxRow">
         <input type="checkbox" name="include_ai_notes" value="1" checked data-export-option />

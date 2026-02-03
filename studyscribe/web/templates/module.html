@@ -4,6 +4,7 @@
 <div class="panelHeader">
   <h2>Sessions</h2>
   <form method="post" action="{{ url_for('create_session', module_id=module.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
     <input type="hidden" name="name" value="Untitled" />
     <button class="btn btnSmall" type="submit">+ New Session</button>
   </form>
@@ -66,6 +67,7 @@
       <div class="muted" style="font-size:12px;">Add a lecture, workshop, or study session.</div>
     </div>
     <form class="stack8" method="post" action="{{ url_for('create_session', module_id=module.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <input class="input" type="text" name="name" placeholder="Week 1" required />
       <button class="btn btnPrimary" type="submit">Create Session</button>
     </form>

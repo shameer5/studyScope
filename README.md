@@ -19,6 +19,11 @@ Local-first study session workspace. Sprint 1 delivers module/session management
 - Q&A with citations over transcript and attachments.
 - Export session ZIP with selected artifacts and manifest.
 
+## Sprint 4 scope
+- Containerized runtime (Dockerfile with Python 3.12 + ffmpeg + pinned deps).
+- CI workflow for pytest and Docker build verification.
+- Security hardening: enforced `FLASK_SECRET` in production and CSRF protection.
+
 ## Setup
 1. Install Python dependencies:
    ```bash
@@ -34,11 +39,14 @@ python app.py
 
 Open http://127.0.0.1:5000/home.
 
+## Important (runtime secrets)
+- `FLASK_SECRET` is required in production. For local development, either set `FLASK_SECRET` or set `STUDYSCRIBE_ENV=development` (or `FLASK_DEBUG=1`) to allow the dev fallback secret.
+
 ## Sprint gate
 - Role-based sprint gate reviews are recorded in `docs/16-Sprint-Gate.md`.
 
 ## Environment variables
-- `FLASK_SECRET`: Flask session secret (optional; defaults to `studyscribe-dev`).
+- `FLASK_SECRET`: Flask session secret (required in production; set `STUDYSCRIBE_ENV=development` or `FLASK_DEBUG=1` for local dev fallback).
 - `TRANSCRIBE_CHUNK_SECONDS`: Chunk size for transcription (default `600` seconds).
 - `GEMINI_API_KEY`: Required for AI features (Sprint 2+).
 - `GEMINI_MODEL`: Optional override for the Gemini model.
@@ -46,6 +54,12 @@ Open http://127.0.0.1:5000/home.
 ## Tests
 ```bash
 pytest -q
+```
+
+## Docker
+```bash
+docker build -t studyscribe .
+docker run --rm -p 5000:5000 -e FLASK_SECRET="change-me" studyscribe
 ```
 
 ## Notes

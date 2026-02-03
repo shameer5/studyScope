@@ -3,27 +3,18 @@
 This document describes deployment models, CI/CD, hosting options, configuration, monitoring, logging, and rollback strategy. Evidence is cited from code; where not found, assumptions are labeled.
 
 1) CI/CD Pipeline
-- Current state: no CI/CD configuration files present in repo (no `.github/workflows/`, `Jenkinsfile`, or `.gitlab-ci.yml`).
-- ASSUMPTION: CI/CD must be configured by operators; recommend adding GitHub Actions or GitLab CI to run `pytest` (see `tests/` and test imports in `tests/test_gemini_schema.py`).
-- Suggested pipeline:
-  - On PR/MR: lint (optional), run `pytest` against `tests/` directory.
-  - On merge to main: build a container (if applicable), run full test suite, optionally deploy to staging.
+- Current state: GitHub Actions workflow present at `.github/workflows/ci.yml`.
+- Pipeline behavior:
+  - On PR/push: installs deps, runs `pytest`, builds the Docker image, and verifies runtime deps inside the container (`ffmpeg`, `faster_whisper`, `google.genai`).
 
 2) Hosting & Deployment Options
-- Local single-node: simplest option. Run `python app.py` from `/app.py` (entrypoint in root). See `studyscribe/app.py` which imports and bootstraps via `_init()`.
-- Container (Docker): no Dockerfile present in repo. Suggested Dockerfile pattern:
-  ```dockerfile
-  FROM python:3.12-slim
-  RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
-  WORKDIR /app
-  COPY requirements.txt .
-  RUN pip install -r requirements.txt
-  COPY . .
-  ENV FLASK_SECRET=<provide-at-runtime>
-  ENV GEMINI_API_KEY=<provide-at-runtime>
-  CMD ["python", "app.py"]
-  ```
-  Note: system dependency `ffmpeg` is required by `studyscribe/services/transcribe.py`: `_ensure_wav()`.
+- Local single-node: simplest option. Run `python app.py` from `/app.py` (entrypoint in root). This uses `studyscribe.app:create_app()` for initialization.
+- Container (Docker): Dockerfile present at repo root. It uses Python 3.12, installs `ffmpeg`, and installs pinned Python deps from `requirements.txt`.
+  - Default data paths inside container:
+    - `DATA_DIR`: `/app/studyscribe/data`
+    - `DB_PATH`: `/app/studyscribe/studyscribe.db`
+  - For persistence, mount volumes to those paths (or override via `config.override_paths()` in a custom entrypoint).
+  - Note: system dependency `ffmpeg` is required by `studyscribe/services/transcribe.py`: `_ensure_wav()`.
 
 - Background workers: transcription and notes generation run in a `ThreadPoolExecutor` (see `studyscribe/services/jobs.py`: `_EXECUTOR` with `max_workers=4`). For production, extract jobs to a separate worker process/service and use a message queue (e.g., Celery + Redis).
 
@@ -31,8 +22,8 @@ This document describes deployment models, CI/CD, hosting options, configuration
 - Environment variables (see `studyscribe/core/config.py`):
   - `GEMINI_API_KEY` — AI features (optional).
   - `GEMINI_MODEL` — Gemini model choice (optional, defaults to `gemini-2.5-flash`).
-  - `TRANSCRIBE_CHUNK_SECONDS` — transcription chunk duration (optional, default 30).
-  - `FLASK_SECRET` — session secret (optional, defaults to `studyscribe-dev`; unsafe default for production).
+  - `TRANSCRIBE_CHUNK_SECONDS` — transcription chunk duration (optional, default 600).
+  - `FLASK_SECRET` — session secret (required in production; app raises if missing outside dev/test mode).
 
 - File paths (hardcoded in `studyscribe/core/config.py`):
   - `DB_PATH` — SQLite file location (default inside package base).
@@ -88,4 +79,4 @@ This document describes deployment models, CI/CD, hosting options, configuration
 10) ASSUMPTION Summary
 - Operators will provision environment variables (`GEMINI_API_KEY`, `FLASK_SECRET`) at runtime.
 - Database and data storage are local; for HA deployments, operators must provide shared infra.
-- No built-in CI/CD, Dockerfile, or production-grade monitoring; operators must add these.
+- Production-grade monitoring and external job queues are not included; operators must add these.

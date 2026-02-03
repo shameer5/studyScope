@@ -21,3 +21,8 @@ All notable changes to StudyScribe are documented here.
 - Implemented AI notes generation and Q&A with citations and source previews.
 - Added export ZIP builder with manifest and advanced options.
 - Added Sprint 3 tests covering notes, Q&A, and export flow.
+
+## Sprint 4 - 2026-02-03
+- Added Dockerfile with Python 3.12, ffmpeg, and pinned dependencies.
+- Added GitHub Actions CI to run pytest, build Docker, and verify container deps.
+- Enforced `FLASK_SECRET` for production and added Flask-WTF CSRF protection.

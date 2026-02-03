@@ -40,11 +40,14 @@ This document lists external integrations used by StudyScribe, their purpose, wh
 - `GEMINI_API_KEY` — referenced in `studyscribe/core/config.py` as `Settings.gemini_api_key` and used by `studyscribe/services/gemini.py` `_client()`.
 - `GEMINI_MODEL` — referenced in `studyscribe/core/config.py` as `Settings.gemini_model` (optional, default `gemini-2.5-flash`).
 - `TRANSCRIBE_CHUNK_SECONDS` — referenced in `studyscribe/core/config.py` as `Settings.chunk_seconds` (affects `_chunk_wav()` behavior).
-- `FLASK_SECRET` — referenced in `studyscribe/app.py` where `app.secret_key` is set: `app.secret_key = os.getenv("FLASK_SECRET", "studyscribe-dev")` (note: default fallback present). **⚠️ SECURITY: The default value must be overridden in production deployments with a strong, random secret to prevent session tampering.**
+- `FLASK_SECRET` — referenced in `studyscribe/app.py` and required for production; the app raises on startup if it is missing when not in dev/test mode. For local development, set `STUDYSCRIBE_ENV=development` or `FLASK_DEBUG=1` to allow the dev fallback secret.
 
 7) Failure handling summary & recommendations
 - Current code surfaces failures via `GeminiError` and `TranscriptionError` which include `user_message` intended for UI display (`studyscribe/services/gemini.py`, `studyscribe/services/transcribe.py`). Background jobs catch exceptions and set job `status='error'` with a safe `message` via `enqueue_job()` in `studyscribe/services/jobs.py`.
 - Retries/timeouts: none implemented for external calls — recommend adding retry wrappers around Gemini calls and `ffmpeg` conversion, and timeouts when calling model SDKs.
+
+8) CSRF protection
+- Flask-WTF `CSRFProtect` is enabled; templates include `csrf_token()` inputs and JS adds the `X-CSRFToken` header for JSON/form submissions.
 
 ## Assignment LLM Requirement Satisfaction
 
