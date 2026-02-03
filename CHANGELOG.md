@@ -12,8 +12,12 @@ All notable changes to StudyScribe are documented here.
 - Added transcription progress indicator and aligned backlog acceptance criteria with route inventory.
 
 ## Sprint 2 - 2026-02-03
-- Added attachment upload with text extraction index.
-- Implemented AI notes generation, Q&A endpoints, and source preview.
-- Added transcript tagging and personal notes persistence.
-- Implemented export ZIP builder with manifest.
-- Added Sprint 2 tests for AI notes, Q&A, and export flow.
+- Ported StudyScribe reference UI layout, modals, and interactions.
+- Ensured offline-first static assets with local CSS/JS/vendor files.
+- Wired UI stubs for AI/Q&A/export actions without introducing new routes.
+
+## Sprint 3 - 2026-02-03
+- Added transcript search ranking with inline highlights.
+- Implemented AI notes generation and Q&A with citations and source previews.
+- Added export ZIP builder with manifest and advanced options.
+- Added Sprint 3 tests covering notes, Q&A, and export flow.

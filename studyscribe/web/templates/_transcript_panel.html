@@ -14,7 +14,7 @@
         id="seg-{{ seg_id }}"
       >
         <div class="muted" style="font-size:12px;">[{{ '%.2f'|format(segment.start) }} - {{ '%.2f'|format(segment.end) }}]</div>
-        <div>{{ segment.text }}</div>
+        <div data-transcript-text>{{ segment.text }}</div>
         <div class="tagPills tagPills--segments">
           {% for label in ['IMPORTANT', 'CONFUSING', 'EXAM-SIGNAL'] %}
             {% set existing = annotations.tags.get(seg_key, []) %}
