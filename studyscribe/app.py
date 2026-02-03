@@ -25,6 +25,12 @@ app = Flask(
 app.secret_key = os.getenv("FLASK_SECRET", "studyscribe-dev")
 
 ALLOWED_AUDIO_EXTENSIONS = {".wav", ".mp3", ".m4a", ".aac", ".flac", ".ogg"}
+ALLOWED_ATTACHMENT_EXTENSIONS = {".pdf", ".ppt", ".pptx", ".doc", ".docx"}
+
+
+@app.context_processor
+def inject_config():
+    return {"config": config.settings}
 
 
 def _now_iso() -> str:
@@ -43,21 +49,34 @@ def _ensure_session_dirs(session_dir: Path) -> None:
     for name in ("audio", "attachments", "transcript", "notes", "exports", "work"):
         (session_dir / name).mkdir(parents=True, exist_ok=True)
 
+def _format_size(size_bytes: int) -> str:
+    if size_bytes < 1024:
+        return f"{size_bytes} B"
+    if size_bytes < 1024 * 1024:
+        return f"{size_bytes / 1024:.1f} KB"
+    return f"{size_bytes / (1024 * 1024):.1f} MB"
 
-def _collect_audio_files(session_dir: Path) -> list[dict]:
-    audio_dir = session_dir / "audio"
-    if not audio_dir.exists():
+
+def _collect_files(directory: Path, allowed_extensions: set[str] | None = None) -> list[dict]:
+    if not directory.exists():
         return []
     files = []
-    for path in sorted(audio_dir.iterdir()):
-        if path.is_file():
-            files.append(
-                {
-                    "name": path.name,
-                    "size": path.stat().st_size,
-                }
-            )
+    for path in sorted(directory.iterdir(), key=lambda item: item.stat().st_mtime, reverse=True):
+        if not path.is_file():
+            continue
+        if allowed_extensions is not None and path.suffix.lower() not in allowed_extensions:
+            continue
+        files.append(
+            {
+                "name": path.name,
+                "size": _format_size(path.stat().st_size),
+            }
+        )
     return files
+
+
+def _collect_audio_files(session_dir: Path) -> list[dict]:
+    return _collect_files(session_dir / "audio", ALLOWED_AUDIO_EXTENSIONS)
 
 
 def _select_latest_audio(session_dir: Path) -> Path | None:
@@ -82,6 +101,29 @@ def _format_ts(seconds: float) -> str:
     return f"{minutes:02d}:{secs:02d}"
 
 
+def _format_datetime(value: str | None) -> str:
+    if not value:
+        return ""
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return value
+    return parsed.astimezone(timezone.utc).strftime("%d %b %Y, %I:%M %p")
+
+
+def _wants_json() -> bool:
+    accept = request.headers.get("Accept", "")
+    return "application/json" in accept.lower()
+
+
+def _json_error(message: str, status: int = 400):
+    return jsonify({"ok": False, "error": message}), status
+
+
+def _json_not_implemented(message: str = "Not implemented in Sprint 2 (UI/UX parity)."):
+    return _json_error(message, status=501)
+
+
 def _init() -> None:
     config.DATA_DIR.mkdir(parents=True, exist_ok=True)
     db.init_db()
@@ -90,6 +132,11 @@ def _init() -> None:
 @app.template_filter("format_ts")
 def _format_ts_filter(seconds: float) -> str:
     return _format_ts(seconds)
+
+
+@app.template_filter("format_dt")
+def _format_dt_filter(value: str | None) -> str:
+    return _format_datetime(value)
 
 
 @app.route("/")
@@ -169,19 +216,78 @@ def view_session(session_id: str):
     module = db.fetch_one("SELECT * FROM modules WHERE id = ?", (session["module_id"],))
     if not module:
         abort(404)
+    sessions = db.fetch_all(
+        "SELECT * FROM sessions WHERE module_id = ? ORDER BY created_at DESC",
+        (session["module_id"],),
+    )
     session_dir = _session_dir(session["module_id"], session_id)
     _ensure_session_dirs(session_dir)
     transcript_path = session_dir / "transcript" / "transcript.json"
     transcript = load_transcript(transcript_path)
     job_id = request.args.get("job_id")
     modules = db.fetch_all("SELECT * FROM modules ORDER BY created_at DESC")
+    audio_files = _collect_audio_files(session_dir)
+    attachment_files: list[dict] = []
+    attachments_with_text: set[str] = set()
+    attachment_warning = ""
+    annotations = {"tags": {}, "notes": "", "notes_html": "", "notes_markdown": "", "session_tags": []}
+    notes_html = ""
+    ai_notes = ""
+    suggested_tags: list[str] = []
+    session_tags: list[str] = []
+    has_transcript = bool(transcript)
+    has_attachments = bool(attachment_files)
+    has_attachment_text = False
+    has_notes = False
+    has_generate_content = has_transcript or has_attachment_text or has_notes
+    has_qa_content = has_transcript or has_attachment_text
+    generate_hint = "Upload audio or attachments to generate notes."
+    qa_hint = "Upload transcript or attachments to enable Q&A."
+    session_meta = {
+        "hasTranscript": has_transcript,
+        "hasAttachments": has_attachments,
+        "hasAttachmentText": has_attachment_text,
+        "hasNotes": has_notes,
+        "hasGenerateContent": has_generate_content,
+        "hasQaContent": has_qa_content,
+        "attachmentNames": [item["name"] for item in attachment_files],
+        "moduleId": session["module_id"],
+        "sessionId": session_id,
+        "moduleName": module["name"],
+        "sessionName": session["name"],
+        "autoRename": request.args.get("rename") == "1",
+        "exportUrl": url_for("export_pack", module_id=module["id"], session_id=session_id),
+        "generateUrl": url_for("start_notes", module_id=module["id"], session_id=session_id),
+        "notesUrl": url_for("fetch_ai_notes", module_id=module["id"], session_id=session_id),
+        "transcriptUrl": url_for("fetch_transcript", module_id=module["id"], session_id=session_id),
+        "deleteTranscriptUrl": url_for("delete_transcript", module_id=module["id"], session_id=session_id),
+        "segmentTagsUrl": url_for("update_segment_tags", module_id=module["id"], session_id=session_id),
+        "qaAskUrl": url_for("api_ai_ask"),
+        "qaMessagesUrl": url_for("api_ai_messages", session_id=session_id),
+        "hasAudio": len(audio_files) > 0,
+        "suggestedTags": suggested_tags,
+    }
     return render_template(
         "session.html",
         module=dict(module),
         session=dict(session),
+        sessions=[dict(row) for row in sessions],
         modules=[dict(row) for row in modules],
-        audio_files=_collect_audio_files(session_dir),
+        audio_files=audio_files,
+        attachment_files=attachment_files,
+        attachments_with_text=attachments_with_text,
+        attachment_warning=attachment_warning,
         transcript=transcript,
+        annotations=annotations,
+        notes_html=notes_html,
+        ai_notes=ai_notes,
+        suggested_tags=suggested_tags,
+        session_tags=session_tags,
+        has_generate_content=has_generate_content,
+        has_qa_content=has_qa_content,
+        generate_hint=generate_hint,
+        qa_hint=qa_hint,
+        session_meta=session_meta,
         job_id=job_id,
         transcript_url=url_for("fetch_transcript", module_id=module["id"], session_id=session_id),
     )
@@ -196,20 +302,32 @@ def upload_audio(module_id: str, session_id: str):
         abort(404)
     file_storage = request.files.get("audio")
     if not file_storage or not file_storage.filename:
+        if _wants_json():
+            return _json_error("No audio file selected.", status=400)
         flash("No audio file selected.", "error")
         return redirect(url_for("view_session", session_id=session_id)), 400
     ext = Path(file_storage.filename).suffix.lower()
     if ext not in ALLOWED_AUDIO_EXTENSIONS:
+        if _wants_json():
+            return _json_error("Unsupported audio file type.", status=400)
         flash("Unsupported audio file type.", "error")
         return redirect(url_for("view_session", session_id=session_id)), 400
     session_dir = _session_dir(module_id, session_id)
     _ensure_session_dirs(session_dir)
-    if request.form.get("replace") == "1":
-        audio_dir = session_dir / "audio"
-        if audio_dir.exists():
-            shutil.rmtree(audio_dir)
+    audio_dir = session_dir / "audio"
+    existing_audio = list(audio_dir.glob("*")) if audio_dir.exists() else []
+    replace = request.form.get("replace") == "1"
+    if existing_audio and not replace:
+        if _wants_json():
+            return _json_error("Audio already uploaded. Replace the audio to continue.", status=400)
+        flash("Audio already uploaded. Replace the audio to continue.", "error")
+        return redirect(url_for("view_session", session_id=session_id)), 400
+    if existing_audio and replace:
+        shutil.rmtree(audio_dir)
         _clear_transcript(session_dir)
     saved_path = save_audio(file_storage, session_dir)
+    if _wants_json():
+        return jsonify({"ok": True, "filename": saved_path.name})
     flash(f"Audio saved to {saved_path.name}.", "success")
     return redirect(url_for("view_session", session_id=session_id))
 
@@ -262,8 +380,97 @@ def fetch_transcript(module_id: str, session_id: str):
     session_dir = _session_dir(module_id, session_id)
     transcript_path = session_dir / "transcript" / "transcript.json"
     transcript = load_transcript(transcript_path)
-    html = render_template("_transcript_panel.html", transcript=transcript)
+    html = render_template("_transcript_panel.html", transcript=transcript, annotations={"tags": {}})
     return jsonify({"html": html, "has_transcript": bool(transcript)})
+
+
+@app.route("/modules/<module_id>/sessions/<session_id>/upload-attachment", methods=["POST"])
+def upload_attachment(module_id: str, session_id: str):
+    if _wants_json():
+        return _json_not_implemented("Attachments are not available in Sprint 2.")
+    flash("Attachments are not available in Sprint 2 (UI/UX parity).", "warning")
+    return redirect(url_for("view_session", session_id=session_id))
+
+
+@app.route("/modules/<module_id>/sessions/<session_id>/delete-audio", methods=["POST"])
+def delete_audio(module_id: str, session_id: str):
+    return _json_not_implemented("Audio deletion is not available in Sprint 2.")
+
+
+@app.route("/modules/<module_id>/sessions/<session_id>/delete-attachment", methods=["POST"])
+def delete_attachment(module_id: str, session_id: str):
+    return _json_not_implemented("Attachment deletion is not available in Sprint 2.")
+
+
+@app.route("/modules/<module_id>/sessions/<session_id>/annotations", methods=["POST"])
+def save_annotations(module_id: str, session_id: str):
+    if _wants_json():
+        return _json_not_implemented("Notes are not available in Sprint 2.")
+    flash("Notes are not available in Sprint 2 (UI/UX parity).", "warning")
+    return redirect(url_for("view_session", session_id=session_id))
+
+
+@app.route("/modules/<module_id>/sessions/<session_id>/transcript/delete", methods=["POST"])
+def delete_transcript(module_id: str, session_id: str):
+    return _json_not_implemented("Transcript deletion is not available in Sprint 2.")
+
+
+@app.route("/modules/<module_id>/sessions/<session_id>/transcript/tags", methods=["POST"])
+def update_segment_tags(module_id: str, session_id: str):
+    return _json_not_implemented("Transcript tagging is not available in Sprint 2.")
+
+
+@app.route("/modules/<module_id>/sessions/<session_id>/notes", methods=["POST"])
+def start_notes(module_id: str, session_id: str):
+    return _json_not_implemented("AI notes are not available in Sprint 2.")
+
+
+@app.route("/modules/<module_id>/sessions/<session_id>/notes", methods=["GET"])
+def fetch_ai_notes(module_id: str, session_id: str):
+    return _json_not_implemented("AI notes are not available in Sprint 2.")
+
+
+@app.route("/modules/<module_id>/sessions/<session_id>/export", methods=["POST"])
+def export_pack(module_id: str, session_id: str):
+    return _json_not_implemented("Export is not available in Sprint 2.")
+
+
+@app.route("/modules/<module_id>/sessions/<session_id>/ask", methods=["POST"])
+def ask_question(module_id: str, session_id: str):
+    if _wants_json():
+        return _json_not_implemented("Q&A is not available in Sprint 2.")
+    flash("Q&A is not available in Sprint 2 (UI/UX parity).", "warning")
+    return redirect(url_for("view_session", session_id=session_id))
+
+
+@app.route("/api/ai/ask", methods=["POST"])
+def api_ai_ask():
+    return _json_not_implemented("Q&A is not available in Sprint 2.")
+
+
+@app.route("/api/sessions/<session_id>/ai/messages", methods=["GET"])
+def api_ai_messages(session_id: str):
+    return jsonify({"messages": []})
+
+
+@app.route("/modules/<module_id>", methods=["PATCH"])
+def update_module(module_id: str):
+    return _json_not_implemented("Module rename is not available in Sprint 2.")
+
+
+@app.route("/modules/<module_id>", methods=["DELETE"])
+def delete_module(module_id: str):
+    return _json_not_implemented("Module delete is not available in Sprint 2.")
+
+
+@app.route("/sessions/<session_id>", methods=["PATCH"])
+def update_session(session_id: str):
+    return _json_not_implemented("Session rename is not available in Sprint 2.")
+
+
+@app.route("/sessions/<session_id>", methods=["DELETE"])
+def delete_session(session_id: str):
+    return _json_not_implemented("Session delete is not available in Sprint 2.")
 
 
 def create_app(*, testing: bool = False, data_dir: Path | None = None, db_path: Path | None = None) -> Flask:

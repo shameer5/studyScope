@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ source.title if source else 'Attachment preview' }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}" />
+</head>
+<body>
+  <div class="container">
+    <div class="panel" style="max-width:720px; margin:24px auto;">
+      <div class="panelHeader">
+        <div>
+          <div style="font-weight:650;">{{ source.title if source else 'Attachment preview' }}</div>
+          {% if source and source.meta %}
+            <div class="muted" style="font-size:12px;">
+              {% if source.meta.file_name %}{{ source.meta.file_name }}{% endif %}
+              {% if source.meta.slide_index %} · Slide {{ source.meta.slide_index }}{% endif %}
+              {% if source.meta.page %} · Page {{ source.meta.page }}{% endif %}
+            </div>
+          {% endif %}
+        </div>
+        {% if source and source.open_url %}
+          <a class="btn btnGhost btnSmall" href="{{ source.open_url }}" target="_blank" rel="noopener">
+            Open original
+          </a>
+        {% endif %}
+      </div>
+      <div class="panelBody section">
+        <div class="sourcePreviewExcerpt scrollbar-dark" id="attachmentPreviewExcerpt">
+          {% if excerpt_html %}
+            {{ excerpt_html|safe }}
+          {% else %}
+            <div class="muted" style="font-size:12px;">Preview not available for this file yet. Open original.</div>
+          {% endif %}
+        </div>
+        {% if is_pdf and source and source.open_url %}
+          <div class="attachmentPreviewFrame">
+            <object
+              class="attachmentPdfViewer"
+              type="application/pdf"
+              data="{{ source.open_url }}"
+              aria-label="PDF preview"
+            >
+              <div class="muted" style="font-size:12px;">
+                PDF preview unavailable.
+                <a href="{{ source.open_url }}" target="_blank" rel="noopener">Open original</a>
+              </div>
+            </object>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      const highlight = document.querySelector("#attachmentPreviewExcerpt mark");
+      if (!highlight) return;
+      highlight.classList.add("hl");
+      highlight.scrollIntoView({ behavior: "smooth", block: "center" });
+      window.setTimeout(() => highlight.classList.remove("hl"), {{ timeout_ms|default(5000) }});
+    })();
+  </script>
+</body>
+</html>

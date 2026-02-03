@@ -1,36 +1,57 @@
 {% extends "base.html" %}
 
-{% block workspace_header %}
-  <div>
-    <h1 class="page-title">Modules</h1>
-    <div class="page-subtitle">Create a module to start organizing sessions.</div>
+{% block list_column %}
+<div class="panelHeader">
+  <h2>Sessions</h2>
+  <button class="btn btnSmall" type="button" disabled>+ New Session</button>
+</div>
+<div class="panelBody section">
+  <input class="input" placeholder="Search sessions…" disabled />
+  <div class="stack8">
+    <div class="row rowStatic">
+      <div style="font-weight:650;">No sessions yet</div>
+      <div class="muted" style="font-size:12px;">Select a module to see sessions.</div>
+    </div>
   </div>
+</div>
+{% endblock %}
+
+{% block workspace_header %}
+<h1>Home</h1>
+<div class="muted" style="font-size:12px;">Create modules and track weekly sessions.</div>
 {% endblock %}
 
 {% block content %}
-  <section class="card">
-    <form class="form" method="post" action="{{ url_for('create_module') }}">
-      <label for="module-name">Module name</label>
-      <div class="form-row">
-        <input id="module-name" name="name" type="text" placeholder="e.g., Computer Science 101" required />
-        <button class="btn btn-accent" type="submit">Create module</button>
-      </div>
+<div class="stack16">
+  <div class="section">
+    <div class="stack8">
+      <div style="font-weight:650;">Create a new module</div>
+      <div class="muted" style="font-size:12px;">Start a workspace for a course, project, or training series.</div>
+    </div>
+    <form class="stack8" method="post" action="{{ url_for('create_module') }}">
+      <input class="input" type="text" name="name" placeholder="MISDI - Digital Innovation" required />
+      <button class="btn btnPrimary" type="submit">Create Module</button>
     </form>
-  </section>
+  </div>
 
-  <section class="card">
-    <h2>Recent modules</h2>
-    {% if modules %}
-      <div class="list">
-        {% for module in modules %}
-          <a class="list-item" href="{{ url_for('view_module', module_id=module.id) }}">
-            <div class="list-title">{{ module.name }}</div>
-            <div class="list-meta">Created {{ module.created_at }}</div>
-          </a>
-        {% endfor %}
-      </div>
-    {% else %}
-      <div class="muted">No modules created yet.</div>
-    {% endif %}
-  </section>
+  <div class="section">
+    <div class="stack8">
+      <div style="font-weight:650;">Recent modules</div>
+      <div class="muted" style="font-size:12px;">Jump back into a module from the sidebar list.</div>
+    </div>
+    <div class="stack8">
+      {% for module in modules[:4] %}
+        <div class="row rowStatic">
+          <div style="font-weight:650;">{{ module.name }}</div>
+          <div class="muted" style="font-size:12px;">Created {{ module.created_at|format_dt }}</div>
+        </div>
+      {% else %}
+        <div class="row rowStatic">
+          <div style="font-weight:650;">No modules yet</div>
+          <div class="muted" style="font-size:12px;">Create your first module to begin.</div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
 {% endblock %}

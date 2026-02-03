@@ -20,7 +20,7 @@ Milestone v0.1 (Alpha / Proof-of-Concept)
 - Risk: transcription runtime (ffmpeg, faster_whisper) — see `docs/12-Risk-Register.md` T1.
 
 Milestone v0.2 (Beta / AI-Ready)
-- Target: end of Sprint 2.
+- Target: end of Sprint 3.
 - Goal: add AI notes and Q&A features; gather user feedback.
 - Deliverables:
   - AI notes generation (US-3-1).
@@ -31,7 +31,7 @@ Milestone v0.2 (Beta / AI-Ready)
 - Risk: Gemini API quota/rate limits — see `docs/12-Risk-Register.md` T2.
 
 Milestone v1.0 (General Availability)
-- Target: end of Sprint 3 or 4.
+- Target: end of Sprint 4 or 5.
 - Goal: production-ready, documented, deployable.
 - Deliverables:
   - Container images (Dockerfile, CI/CD).
@@ -65,7 +65,18 @@ Sprint 1: Foundation (Weeks 1–2)
   - Release notes: "Transcription MVP with export".
   - Tested with WAV files up to 10 minutes.
 
-Sprint 2: AI & Q&A (Weeks 3–4)
+Sprint 2: UI/UX Parity (Weeks 3–4)
+- Focus: port StudyScribe reference UI, interactions, and visual system.
+- Stories:
+  - US-6-1 (UI parity): Tasks in `docs/13-Backlog.md` (templates, CSS, JS, vendor assets).
+  - UX gate: ensure `docs/03-UX-Flows-and-Edge-Cases.md` is satisfied.
+- Estimated points: 18.
+- Key deliverables:
+  - Reference UI layout (3-column shell, AI drawer, modals) live.
+  - Animations and interactions wired (toasts, drawer, search, tabs).
+  - UI stubs for AI/Q&A/attachments/export until Sprint 3.
+
+Sprint 3: AI & Q&A (Weeks 5–6)
 - Focus: AI features and advanced transcript interaction.
 - Stories:
   - US-2-2 (search): Tasks T-2-2-1, T-2-2-2.
@@ -78,7 +89,7 @@ Sprint 2: AI & Q&A (Weeks 3–4)
   - Release notes: "AI notes, Q&A, export enhancements".
   - Test with real Gemini API (if quota available).
 
-Sprint 3: DevOps & Hardening (Weeks 5–6)
+Sprint 4: DevOps & Hardening (Weeks 7–8)
 - Focus: production readiness, CI/CD, security.
 - Stories:
   - US-5-2 (containerization): Tasks T-5-2-1 through T-5-2-3.
@@ -94,7 +105,7 @@ Sprint 3: DevOps & Hardening (Weeks 5–6)
   - Dockerfile builds and runs successfully.
   - CI/CD pipeline green.
 
-Sprint 4 (optional): Stabilization & Polish
+Sprint 5 (optional): Stabilization & Polish
 - Focus: bug fixes, performance, documentation polish.
 - Estimated points: 15.
 - Key deliverables:

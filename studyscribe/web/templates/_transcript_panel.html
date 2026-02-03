@@ -1,12 +1,43 @@
 {% if transcript %}
-  <div class="transcript-list">
+  <div class="stack16" data-transcript-list>
     {% for segment in transcript %}
-      <div class="transcript-segment">
-        <div class="timestamp">{{ segment.start|format_ts }} - {{ segment.end|format_ts }}</div>
-        <div class="segment-text">{{ segment.text }}</div>
+      {% set seg_id = loop.index0|string %}
+      <div
+        class="section transcriptSegment"
+        data-transcript-segment
+        data-start="{{ segment.start }}"
+        data-seg-id="{{ seg_id }}"
+        data-anchor="seg-{{ seg_id }}"
+        data-jump-kind="transcript"
+        data-anchor-id="seg-{{ seg_id }}"
+        id="seg-{{ seg_id }}"
+      >
+        <div class="muted" style="font-size:12px;">[{{ '%.2f'|format(segment.start) }} - {{ '%.2f'|format(segment.end) }}]</div>
+        <div>{{ segment.text }}</div>
+        <div class="tagPills tagPills--segments">
+          {% for label in ['IMPORTANT', 'CONFUSING', 'EXAM-SIGNAL'] %}
+            {% set existing = annotations.tags.get(seg_id, []) %}
+            {% set pill_class = 'tagPill--important' if label == 'IMPORTANT' else 'tagPill--confusing' if label == 'CONFUSING' else 'tagPill--exam' %}
+            {% set is_checked = label in existing %}
+            <div class="tagPillItem">
+              <button
+                class="tagPill {{ pill_class }}"
+                type="button"
+                data-segment-tag
+                data-tag-label="{{ label }}"
+                aria-pressed="{{ 'true' if is_checked else 'false' }}"
+              >
+                {{ label }}
+              </button>
+            </div>
+          {% endfor %}
+        </div>
       </div>
     {% endfor %}
   </div>
 {% else %}
-  <div class="muted">No transcript yet.</div>
+  <div class="row rowStatic">
+    <div style="font-weight:650;">No transcript yet</div>
+    <div class="muted" style="font-size:12px;">Run transcription to populate segments.</div>
+  </div>
 {% endif %}

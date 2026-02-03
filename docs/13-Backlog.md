@@ -118,12 +118,27 @@ EPIC 5: Foundation & DevOps
   - Dockerfile builds successfully.
   - Deployment docs are clear and tested.
 
+EPIC 6: UI/UX Parity (Reference Port)
+- Objective: match the StudyScribe reference UI layout, styles, and interactions.
+- Scope: templates, CSS, client JS behaviors, vendor assets, and UI stubs for non-sprint features.
+- Stories:
+  - US-6-1: As a student, I see the same layout, animations, and interactions as the reference app.
+    - AC: Home, module, and session pages render with the 3-column shell, AI drawer, modals, toasts, tabs, and search.
+    - AC: UI assets are local and match reference (`studyscribe/web/static/...`).
+    - AC: Features not in Sprint 2 show safe, user-facing warnings (no 404s).
+    - Tasks:
+      - T-6-1-1: Port templates from reference (`studyscribe/web/templates/*`).
+      - T-6-1-2: Port CSS/JS and vendor assets (`studyscribe/web/static/*`).
+      - T-6-1-3: Add minimal backend stubs for UI actions (notes, Q&A, export, tags).
+      - T-6-1-4: Validate UI flow per `docs/03-UX-Flows-and-Edge-Cases.md`.
+
 2) Backlog by priority
 
 P0 (Must-have for MVP):
 - US-1-1, US-1-2 (module/session + audio upload)
 - US-2-1 (transcription)
 - US-4-1 (export)
+- US-6-1 (UI/UX parity)
 
 P1 (Should-have for v1):
 - US-2-2 (search/filter transcript)
@@ -145,13 +160,17 @@ Sprint 1 (2 weeks):
 - Estimated velocity: 23 points
 
 Sprint 2 (2 weeks):
+- US-6-1 (UI/UX parity): 18 points
+- Estimated velocity: 18 points
+
+Sprint 3 (2 weeks):
 - US-2-2 (search): 5 points
 - US-3-1 (AI notes): 8 points
 - US-3-2 (Q&A): 8 points
 - US-4-1 (export): 5 points
 - Estimated velocity: 26 points
 
-Sprint 3+ (Ops & scaling):
+Sprint 4+ (Ops & scaling):
 - US-5-2 (Docker/CI/CD): 8 points
 - Risk mitigations (from `docs/12-Risk-Register.md`)
 - Performance optimization
