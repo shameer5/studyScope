@@ -124,14 +124,27 @@ def _client():
 
 def _extract_json(text: str) -> dict[str, Any]:
     raw = text.strip()
-    if raw.startswith("```"):
-        raw = raw.strip("`")
-        if raw.startswith("json"):
-            raw = raw[4:].strip()
+    if "```" in raw:
+        fence_start = raw.find("```")
+        fence_end = raw.rfind("```")
+        if fence_end > fence_start:
+            raw = raw[fence_start + 3 : fence_end].strip()
+            if raw.lower().startswith("json"):
+                raw = raw[4:].strip()
     try:
         return json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise GeminiError("Model returned invalid JSON.", user_message="AI response was invalid.") from exc
+    except json.JSONDecodeError:
+        start = raw.find("{")
+        end = raw.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            candidate = raw[start : end + 1]
+            try:
+                return json.loads(candidate)
+            except json.JSONDecodeError as exc:
+                raise GeminiError(
+                    "Model returned invalid JSON.", user_message="AI response was invalid."
+                ) from exc
+        raise GeminiError("Model returned invalid JSON.", user_message="AI response was invalid.")
 
 
 def generate_notes(prompt: str) -> NotesOutput:
