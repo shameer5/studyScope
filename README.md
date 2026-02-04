@@ -50,6 +50,9 @@ Local-first study session workspace.
 
 ## Run
 ```bash
+export STUDYSCRIBE_ENV=development
+# or set a real secret instead of dev mode:
+# export FLASK_SECRET="change-me"
 python app.py
 ```
 
