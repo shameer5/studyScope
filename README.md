@@ -110,6 +110,3 @@ docker run --rm -p 5000:5000 -e FLASK_SECRET="change-me" studyscribe
 - Transcription requires the `faster-whisper` Python package and `ffmpeg` installed.
 - Attachment text extraction uses `pdfplumber`, `python-docx`, and `python-pptx` when available.
 - All assets are local; no CDN dependencies.
-
-**GitHub Repository**
-- Optional: add the repository URL here to show version history and commits.
