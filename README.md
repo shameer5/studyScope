@@ -83,6 +83,13 @@ Local-first only: keep the server bound to localhost or place it behind a truste
 - AI tools were used to draft and review code, documentation, and test plans.
 - All AI-generated output was reviewed and edited; final decisions and changes were verified by the developer.
 
+To enable AI features locally:
+```bash
+export GEMINI_API_KEY="your-key-here"
+export GEMINI_MODEL="gemini-2.5-flash" # optional
+```
+See `docs/09-Dev-Setup-and-Runbook.md` for full setup and troubleshooting.
+
 ## Tests
 ```bash
 pytest -q
@@ -95,6 +102,9 @@ Dev/test dependencies live in `requirements-dev.txt`.
 docker build -t studyscribe .
 docker run --rm -p 5000:5000 -e FLASK_SECRET="change-me" studyscribe
 ```
+
+## Repository
+- GitHub: https://github.com/shameer5/studyScope (version history and commits).
 
 ## Notes
 - Transcription requires the `faster-whisper` Python package and `ffmpeg` installed.
