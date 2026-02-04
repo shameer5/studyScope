@@ -219,6 +219,7 @@ const runTypewriter = (el, text, { chunk = 2, onComplete, onUpdate, render } = {
   const content = text || "";
   const token = String(Date.now());
   let done = false;
+  let cancelled = false;
   el.dataset.typewriterToken = token;
   el.textContent = "";
   el.classList.remove("markdownContent");
@@ -234,6 +235,7 @@ const runTypewriter = (el, text, { chunk = 2, onComplete, onUpdate, render } = {
   const finish = () => {
     if (done) return;
     done = true;
+    cancelled = true;
     if (el.dataset.typewriterToken !== token) return;
     applyRender(content);
     if (typeof onComplete === "function") {
@@ -242,6 +244,7 @@ const runTypewriter = (el, text, { chunk = 2, onComplete, onUpdate, render } = {
   };
 
   const step = () => {
+    if (cancelled) return;
     if (el.dataset.typewriterToken !== token) return;
     index = Math.min(index + chunk, content.length);
     const slice = content.slice(0, index);
@@ -1756,9 +1759,16 @@ const setupGenerateNotes = (showToast, sessionMeta) => {
     hints.forEach((hint) => hint.classList.toggle("is-hidden", hasContent));
   };
 
-  const setLoading = (loading, message = "Generating…", showStatus = loading) => {
+  const setLoading = (loading, message = "Generating…", showStatus = loading, tone = "info") => {
     isLoading = loading;
-    statusBlocks.forEach((status) => status.classList.toggle("is-hidden", !showStatus));
+    statusBlocks.forEach((status) => {
+      status.classList.toggle("is-hidden", !showStatus);
+      status.classList.toggle("is-error", !loading && showStatus && tone === "error");
+      const spinner = status.querySelector(".spinner");
+      if (spinner) {
+        spinner.classList.toggle("is-hidden", !loading);
+      }
+    });
     statusTexts.forEach((statusText) => {
       statusText.textContent = message;
     });
@@ -1827,13 +1837,13 @@ const setupGenerateNotes = (showToast, sessionMeta) => {
   const pollJob = async (jobId) => {
     const { response, data } = await fetchJson(`/jobs/${jobId}`);
     if (!response.ok) {
-      setLoading(false, "Failed to check generation status.", true);
+      setLoading(false, "Failed to check generation status.", true, "error");
       showToast("error", "Failed to check generation status.");
       return;
     }
     if (data.status === "error") {
       const message = data.message || "Notes generation failed. Please try again.";
-      setLoading(false, message, true);
+      setLoading(false, message, true, "error");
       showToast("error", message);
       return;
     }
@@ -1847,7 +1857,7 @@ const setupGenerateNotes = (showToast, sessionMeta) => {
         headers: { Accept: "application/json" },
       });
       if (!notesResponse.ok) {
-        setLoading(false, "Failed to load notes.", true);
+        setLoading(false, "Failed to load notes.", true, "error");
         showToast("error", "Failed to load notes.");
         return;
       }
@@ -1882,21 +1892,21 @@ const setupGenerateNotes = (showToast, sessionMeta) => {
           headers: { Accept: "application/json" },
         });
         if (!response.ok) {
-        setLoading(false, data.error || "Failed to start note generation.", true);
-        showToast("error", data.error || "Failed to start note generation.");
-        return;
-      }
-      if (!data.job_id) {
-        setLoading(false, "Failed to start note generation.", true);
-        showToast("error", "Failed to start note generation.");
-        return;
-      }
+          setLoading(false, data.error || "Failed to start note generation.", true, "error");
+          showToast("error", data.error || "Failed to start note generation.");
+          return;
+        }
+        if (!data.job_id) {
+          setLoading(false, "Failed to start note generation.", true, "error");
+          showToast("error", "Failed to start note generation.");
+          return;
+        }
         pollJob(data.job_id);
       } catch (err) {
-      setLoading(false, "Failed to start note generation.", true);
-      showToast("error", "Failed to start note generation.");
-    }
-  });
+        setLoading(false, "Failed to start note generation.", true, "error");
+        showToast("error", "Failed to start note generation.");
+      }
+    });
   });
 
   skipButtons.forEach((button) => {

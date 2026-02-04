@@ -255,10 +255,20 @@ button, input, textarea, select { font: inherit; color: inherit; }
   border: 1px solid rgba(38,50,74,.45);
   background: rgba(17,27,46,.35);
 }
+.fileRow > div:first-child {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.fileRow > div:first-child > div:first-child {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .fileActions {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 0 0 auto;
 }
 .filePicker {
   display: flex;
@@ -1049,6 +1059,9 @@ button, input, textarea, select { font: inherit; color: inherit; }
   gap: 10px;
   font-size: 12px;
   color: rgba(168,176,191,.92);
+}
+.aiNotesStatus.is-error {
+  color: rgba(248,113,113,.95);
 }
 .aiNotesShell {
   background: rgba(11,18,32,.6);
